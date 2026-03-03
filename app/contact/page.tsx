@@ -23,10 +23,17 @@ export default function Contact() {
           Aute magna irure deserunt veniam aliqua magna enim voluptate.
         </p>
       </div>
-      <form action="#" method="POST" className="mx-auto mt-16 max-w-xl sm:mt-20">
+      <form
+        action="#"
+        method="POST"
+        className="mx-auto mt-16 max-w-xl sm:mt-20"
+      >
         <div className="grid grid-cols-1 gap-x-8 gap-y-6 sm:grid-cols-2">
           <div>
-            <label htmlFor="first-name" className="block text-sm/6 font-semibold text-gray-900 dark:text-white">
+            <label
+              htmlFor="first-name"
+              className="block text-sm/6 font-semibold text-gray-900 dark:text-white"
+            >
               First name
             </label>
             <div className="mt-2.5">
@@ -40,7 +47,10 @@ export default function Contact() {
             </div>
           </div>
           <div>
-            <label htmlFor="last-name" className="block text-sm/6 font-semibold text-gray-900 dark:text-white">
+            <label
+              htmlFor="last-name"
+              className="block text-sm/6 font-semibold text-gray-900 dark:text-white"
+            >
               Last name
             </label>
             <div className="mt-2.5">
@@ -54,7 +64,10 @@ export default function Contact() {
             </div>
           </div>
           <div className="sm:col-span-2">
-            <label htmlFor="company" className="block text-sm/6 font-semibold text-gray-900 dark:text-white">
+            <label
+              htmlFor="company"
+              className="block text-sm/6 font-semibold text-gray-900 dark:text-white"
+            >
               Company
             </label>
             <div className="mt-2.5">
@@ -68,7 +81,10 @@ export default function Contact() {
             </div>
           </div>
           <div className="sm:col-span-2">
-            <label htmlFor="email" className="block text-sm/6 font-semibold text-gray-900 dark:text-white">
+            <label
+              htmlFor="email"
+              className="block text-sm/6 font-semibold text-gray-900 dark:text-white"
+            >
               Email
             </label>
             <div className="mt-2.5">
@@ -82,7 +98,10 @@ export default function Contact() {
             </div>
           </div>
           <div className="sm:col-span-2">
-            <label htmlFor="phone-number" className="block text-sm/6 font-semibold text-gray-900 dark:text-white">
+            <label
+              htmlFor="phone-number"
+              className="block text-sm/6 font-semibold text-gray-900 dark:text-white"
+            >
               Phone number
             </label>
             <div className="mt-2.5">
@@ -115,7 +134,10 @@ export default function Contact() {
             </div>
           </div>
           <div className="sm:col-span-2">
-            <label htmlFor="message" className="block text-sm/6 font-semibold text-gray-900 dark:text-white">
+            <label
+              htmlFor="message"
+              className="block text-sm/6 font-semibold text-gray-900 dark:text-white"
+            >
               Message
             </label>
             <div className="mt-2.5">
@@ -141,9 +163,15 @@ export default function Contact() {
                 />
               </div>
             </div>
-            <label htmlFor="agree-to-policies" className="text-sm/6 text-gray-600 dark:text-gray-400">
+            <label
+              htmlFor="agree-to-policies"
+              className="text-sm/6 text-gray-600 dark:text-gray-400"
+            >
               By selecting this, you agree to our{' '}
-              <a href="#" className="whitespace-nowrap font-semibold text-indigo-600 dark:text-indigo-400">
+              <a
+                href="#"
+                className="whitespace-nowrap font-semibold text-indigo-600 dark:text-indigo-400"
+              >
                 privacy policy
               </a>
               .
