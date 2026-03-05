@@ -9,7 +9,7 @@ export async function POST(req: Request) {
   try {
     // Notify you
     await resend.emails.send({
-      from: 'SnowPro Contact <noreply@snowproservices.ca>',
+      from: 'onboarding@resend.dev',
       to: process.env.CONTACT_EMAIL!,
       subject: `New message from ${name}`,
       html: `
@@ -23,7 +23,7 @@ export async function POST(req: Request) {
 
     // Auto-reply to customer
     await resend.emails.send({
-      from: 'SnowPro Services <noreply@snowproservices.ca>',
+      from: 'onboarding@resend.dev',
       to: email,
       subject: `We received your message — SnowPro Services`,
       html: `

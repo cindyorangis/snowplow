@@ -2,7 +2,10 @@
 
 import { useState } from 'react'
 
+import Alert from '@/components/ui/Alert'
+
 import { ChevronDownIcon } from '@heroicons/react/16/solid'
+import { stat } from 'fs'
 
 export default function Contact() {
   const [formData, setFormData] = useState({
@@ -70,9 +73,15 @@ export default function Contact() {
         </p>
       </div>
 
+      {status === 'success' && (
+        <div className="mt-6">
+          <Alert />
+        </div>
+      )}
+
       {status === 'error' && (
         <div className="mt-6 rounded-md bg-red-50 p-4 text-red-800">
-          Something went wrong. Please try again or call us directly.
+          Something went wrong. Please try again later.
         </div>
       )}
 
