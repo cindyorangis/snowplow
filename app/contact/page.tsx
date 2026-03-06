@@ -5,7 +5,6 @@ import { useState } from 'react'
 import Alert from '@/components/ui/Alert'
 
 import { ChevronDownIcon } from '@heroicons/react/16/solid'
-import { stat } from 'fs'
 
 export default function ContactPage() {
   const [formData, setFormData] = useState({
@@ -68,8 +67,8 @@ export default function ContactPage() {
         </h2>
         <p className="mt-2 text-lg/8 text-gray-600 dark:text-gray-400">
           General inquiries, questions about our services, or just want to say
-          hi? We'd love to hear from you! Fill out the form below and we'll get
-          back to you as soon as possible.
+          hi? We&apos;d love to hear from you! Fill out the form below and
+          we&apos;ll get back to you as soon as possible.
         </p>
       </div>
 

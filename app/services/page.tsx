@@ -94,7 +94,7 @@ export default function Services() {
             </p>
             <p className="mt-6 text-base/7 text-gray-700 dark:text-gray-300">
               From single driveways to full commercial lots — we show up after
-              every storm so you don't have to.
+              every storm so you don&apos;t have to.
             </p>
           </div>
           <dl className="col-span-3 grid grid-cols-1 gap-x-8 gap-y-10 text-base/7 text-gray-600 sm:grid-cols-2 lg:gap-y-16 dark:text-gray-400">
@@ -122,7 +122,7 @@ export default function Services() {
                 Step 1 &mdash; Get a Free Quote.
               </span>{' '}
               Fill out our quote form with your address, property type, and the
-              services you need. We'll get back to you within 24 hours.
+              services you need. We&apos;ll get back to you within 24 hours.
             </li>
             <li>
               <span className="font-semibold">
@@ -136,8 +136,8 @@ export default function Services() {
               <span className="font-semibold">
                 Step 3 &mdash; Relax All Winter.
               </span>{' '}
-              When it snows, we show up. You'll receive a notification when your
-              property has been cleared.
+              When it snows, we show up. You&apos;ll receive a notification when
+              your property has been cleared.
             </li>
           </ol>
           <h2 className="mt-16 text-2xl font-bold tracking-tight text-gray-900 dark:text-white">
@@ -195,8 +195,8 @@ export default function Services() {
                 <strong className="font-semibold text-gray-900 dark:text-white">
                   Reliable Every Time.
                 </strong>{' '}
-                We don't cancel because of bad weather. That's kind of the
-                point.
+                We don&apos;t cancel because of bad weather. That&apos;s kind of
+                the point.
               </span>
             </li>
           </ul>

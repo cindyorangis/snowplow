@@ -7,9 +7,9 @@ export default function CTABlock() {
             Ready to get started?
           </h2>
           <p className="mx-auto mt-6 max-w-xl text-pretty text-lg/8 text-gray-600 dark:text-gray-300">
-            Get a free, no-obligation quote for your home or business. We'll
-            confirm your service area, walk you through your options, and have
-            you set up before the first storm hits.
+            Get a free, no-obligation quote for your home or business.
+            We&apos;ll confirm your service area, walk you through your options,
+            and have you set up before the first storm hits.
           </p>
           <div className="mt-10 flex items-center justify-center gap-x-6">
             <a
