@@ -1,30 +1,30 @@
 import {
-  ArrowPathIcon,
-  CloudArrowUpIcon,
-  LockClosedIcon,
+  HomeIcon,
+  BuildingOffice2Icon,
+  SparklesIcon,
 } from '@heroicons/react/20/solid'
 
 const features = [
   {
-    name: 'Residential',
+    name: 'Residential Snow Removal',
     description:
-      'Commodo nec sagittis tortor mauris sed. Turpis tortor quis scelerisque diam id accumsan nullam tempus. Pulvinar etiam lacus volutpat eu.',
-    href: '#',
-    icon: CloudArrowUpIcon,
+      'Driveway plowing, front walkways, and steps cleared after every snowfall of 2cm or more. No scheduling required — if it snows, we show up. End-of-driveway windrows included.',
+    href: '/services',
+    icon: HomeIcon,
   },
   {
-    name: 'Commercial',
+    name: 'Commercial Snow Removal',
     description:
-      'Pellentesque enim a commodo malesuada turpis eleifend risus. Facilisis donec placerat sapien consequat tempor fermentum nibh.',
-    href: '#',
-    icon: LockClosedIcon,
+      'Parking lots, loading docks, and building entrances cleared before business hours. Commercial clients receive priority scheduling with guaranteed pre-dawn service.',
+    href: '/services',
+    icon: BuildingOffice2Icon,
   },
   {
-    name: 'Salting & De-icing',
+    name: 'Salting & De-Icing',
     description:
-      'Pellentesque sit elit congue ante nec amet. Dolor aenean curabitur viverra suspendisse iaculis eget. Nec mollis placerat ultricies euismod.',
-    href: '#',
-    icon: ArrowPathIcon,
+      'Applied after every plow or as a standalone service during ice events. Professional-grade ice melt keeps your property safe and liability-free all winter.',
+    href: '/services',
+    icon: SparklesIcon,
   },
 ]
 

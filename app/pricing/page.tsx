@@ -2,32 +2,34 @@ import { CheckIcon } from '@heroicons/react/20/solid'
 
 const tiers = [
   {
-    name: 'Hobby',
-    id: 'tier-hobby',
-    href: '#',
-    priceMonthly: '$29',
+    name: 'Per-Push',
+    id: 'tier-per-push',
+    href: '/contact',
+    priceMonthly: '$60',
     description:
-      'Modi dolorem expedita deleniti. Corporis iste qui inventore pariatur adipisci vitae.',
+      'Pay only when it snows. No commitment, no contract — great for lighter winters or if you want to try us out first.',
     features: [
-      '5 products',
-      'Up to 1,000 subscribers',
-      'Basic analytics',
-      '48-hour support response time',
+      'Driveway plowing per visit',
+      'Front walkway & steps included',
+      'Windrow removal included',
+      'Billed per storm event',
+      'Service after seasonal contract clients',
     ],
   },
   {
-    name: 'Team',
-    id: 'tier-team',
-    href: '#',
-    priceMonthly: '$99',
+    name: 'Seasonal Contract',
+    id: 'tier-seasonal',
+    href: '/contact',
+    priceMonthly: '$399',
     description:
-      'Explicabo quo fugit vel facere ullam corrupti non dolores. Expedita eius sit sequi.',
+      'One flat rate for the entire winter. Unlimited visits, priority service, and no surprise bills — just a clear driveway every morning.',
     features: [
-      'Unlimited products',
-      'Unlimited subscribers',
-      'Advanced analytics',
-      '1-hour, dedicated support response time',
-      'Marketing automations',
+      'Unlimited plow visits (Nov – Apr)',
+      'Priority scheduling over per-push clients',
+      'Front walkway & steps included',
+      'Windrow removal included',
+      'Storm monitoring — we show up automatically',
+      'Salting available as add-on',
     ],
   },
 ]
@@ -39,14 +41,13 @@ export default function Pricing() {
         <div className="mx-auto max-w-4xl">
           <h2 className="text-base/7 font-semibold text-indigo-400">Pricing</h2>
           <p className="mt-2 text-balance text-5xl font-semibold tracking-tight text-white sm:text-6xl">
-            Choose the right plan for you
+            Simple, transparent pricing
           </p>
         </div>
         <div className="relative mt-6">
           <p className="mx-auto max-w-2xl text-pretty text-lg font-medium text-gray-400 sm:text-xl/8">
-            Choose an affordable plan that’s packed with the best features for
-            engaging your audience, creating customer loyalty, and driving
-            sales.
+            No hidden fees, no surprise charges. Choose per-push for flexibility
+            or lock in a seasonal contract for peace of mind all winter long.
           </p>
           <svg
             viewBox="0 0 1208 1024"
@@ -89,7 +90,7 @@ export default function Pricing() {
                         {tier.priceMonthly}
                       </span>
                       <span className="text-base/7 font-semibold text-gray-600 dark:text-gray-400">
-                        /month
+                        {tier.id === 'tier-seasonal' ? '/season' : '/visit'}
                       </span>
                     </div>
                     <p className="mt-6 text-base/7 text-gray-600 dark:text-gray-300">
@@ -115,25 +116,27 @@ export default function Pricing() {
                     aria-describedby={tier.id}
                     className="mt-8 block rounded-md bg-indigo-600 px-3.5 py-2 text-center text-sm/6 font-semibold text-white shadow-sm hover:bg-indigo-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600 dark:bg-indigo-500 dark:hover:bg-indigo-400 dark:focus-visible:outline-indigo-400"
                   >
-                    Get started today
+                    Get a free quote
                   </a>
                 </div>
               ))}
               <div className="flex flex-col items-start gap-x-8 gap-y-6 rounded-3xl p-8 ring-1 ring-gray-900/10 sm:gap-y-10 sm:p-10 lg:col-span-2 lg:flex-row lg:items-center dark:bg-gray-800/20 dark:ring-white/10">
                 <div className="lg:min-w-0 lg:flex-1">
                   <h3 className="text-base/7 font-semibold text-indigo-600 dark:text-indigo-400">
-                    Discounted
+                    Commercial Properties
                   </h3>
                   <p className="mt-1 text-base/7 text-gray-600 dark:text-gray-400">
-                    Dolor dolores repudiandae doloribus. Rerum sunt aut eum.
-                    Odit omnis non voluptatem sunt eos nostrum.
+                    Parking lots, loading docks, and multi-unit properties have
+                    unique needs. Contact us for a custom quote tailored to your
+                    site size, service window, and SLA requirements.
                   </p>
                 </div>
                 <a
-                  href="#"
+                  href="/contact"
                   className="rounded-md px-3.5 py-2 text-sm/6 font-semibold text-indigo-600 ring-1 ring-inset ring-indigo-200 hover:ring-indigo-300 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600 dark:bg-white/10 dark:text-white dark:ring-white/5 dark:hover:bg-white/20 dark:hover:ring-white/5 dark:focus-visible:outline-white/75"
                 >
-                  Buy discounted license <span aria-hidden="true">&rarr;</span>
+                  Request a commercial quote{' '}
+                  <span aria-hidden="true">&rarr;</span>
                 </a>
               </div>
             </div>
