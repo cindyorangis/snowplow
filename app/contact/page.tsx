@@ -7,7 +7,7 @@ import Alert from '@/components/ui/Alert'
 import { ChevronDownIcon } from '@heroicons/react/16/solid'
 import { stat } from 'fs'
 
-export default function Contact() {
+export default function ContactPage() {
   const [formData, setFormData] = useState({
     name: '',
     email: '',
