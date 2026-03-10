@@ -1,7 +1,7 @@
 export default function CTABlock() {
   return (
     <div className="bg-white pt-12 dark:bg-gray-900">
-      <div className="px-6 pt-20 border-t lg:px-8">
+      <div className="px-6 pt-20 border-t border-gray-200 dark:border-gray-700 lg:px-8">
         <div className="mx-auto max-w-2xl text-center">
           <h2 className="text-balance text-4xl font-semibold tracking-tight text-gray-900 sm:text-5xl dark:text-white">
             Ready to get started?
