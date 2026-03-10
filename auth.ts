@@ -8,7 +8,9 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         email: { label: 'Email', type: 'email' },
         password: { label: 'Password', type: 'password' },
       },
-      async authorize(credentials) {
+      async authorize(
+        credentials: Partial<Record<'email' | 'password', unknown>>
+      ) {
         // Hardcoded test users — replace with real DB lookup later
         const users = [
           {
@@ -16,21 +18,21 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
             name: 'Admin User',
             email: 'admin@snowpro.ca',
             password: 'admin123',
-            role: 'admin',
+            role: 'admin' as const,
           },
           {
             id: '2',
             name: 'Test Customer',
             email: 'customer@test.com',
             password: 'customer123',
-            role: 'customer',
+            role: 'customer' as const,
           },
           {
             id: '3',
             name: 'Test Employee',
             email: 'employee@test.com',
             password: 'employee123',
-            role: 'employee',
+            role: 'employee' as const,
           },
         ]
 
@@ -46,7 +48,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
   ],
   callbacks: {
     async jwt({ token, user }) {
-      if (user) token.role = (user as any).role
+      if (user) token.role = user.role
       return token
     },
     async session({ session, token }) {
