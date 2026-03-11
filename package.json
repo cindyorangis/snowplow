@@ -15,7 +15,9 @@
     "lint:web": "turbo lint --filter=@snowpro/web",
     "prepare": "husky",
     "format": "prettier --write .",
-    "format:check": "prettier --check ."
+    "format:check": "prettier --check .",
+    "clean": "turbo daemon stop && rimraf --glob \"**/node_modules\" \"**/.next\" \"**/.turbo\"",
+    "clean:install": "pnpm clean && pnpm install"
   },
   "dependencies": {
     "turbo": "^2.8.16"
@@ -23,7 +25,8 @@
   "devDependencies": {
     "eslint": "^9.39.4",
     "husky": "^9.1.7",
-    "prettier": "^3.8.1"
+    "prettier": "^3.8.1",
+    "rimraf": "^6.1.3"
   },
   "lint-staged": {
     "*.{ts,tsx,js,jsx}": [

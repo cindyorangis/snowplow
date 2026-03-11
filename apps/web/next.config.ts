@@ -1,3 +1,4 @@
+import path from 'path'
 import type { NextConfig } from 'next'
 import bundleAnalyzer from '@next/bundle-analyzer'
 
@@ -7,6 +8,7 @@ const withBundleAnalyzer = bundleAnalyzer({
 
 const nextConfig: NextConfig = {
   output: 'standalone',
+  outputFileTracingRoot: path.join(__dirname, '../../'), // point to monorepo root
 }
 
 export default withBundleAnalyzer(nextConfig)

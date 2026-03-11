@@ -1,13 +1,13 @@
+FROM node:22-alpine AS base
+RUN corepack enable && corepack prepare pnpm@latest --activate
+
 # ================================
 # Stage 1: Install dependencies
 # ================================
-FROM node:20-alpine AS deps
+FROM base AS deps
 
 # sharp (if you add it later) and other native modules need this
 RUN apk add --no-cache libc6-compat
-
-# Enable pnpm
-RUN corepack enable && corepack prepare pnpm@latest --activate
 
 WORKDIR /app
 
@@ -23,9 +23,7 @@ RUN pnpm install --frozen-lockfile
 # ================================
 # Stage 2: Build
 # ================================
-FROM node:20-alpine AS builder
-
-RUN corepack enable && corepack prepare pnpm@latest --activate
+FROM base AS builder
 
 WORKDIR /app
 
@@ -40,7 +38,7 @@ RUN pnpm --filter @snowpro/web build
 # ================================
 # Stage 3: Production runner
 # ================================
-FROM node:20-alpine AS runner
+FROM node:22-alpine AS runner
 
 WORKDIR /app
 
@@ -49,9 +47,10 @@ ENV NODE_ENV=production
 RUN addgroup --system --gid 1001 nodejs
 RUN adduser --system --uid 1001 nextjs
 
-COPY --from=builder /app/apps/web/public ./public
+# standalone output mirrors full monorepo structure
 COPY --from=builder --chown=nextjs:nodejs /app/apps/web/.next/standalone ./
-COPY --from=builder --chown=nextjs:nodejs /app/apps/web/.next/static ./.next/static
+COPY --from=builder --chown=nextjs:nodejs /app/apps/web/.next/static ./apps/web/.next/static
+COPY --from=builder /app/apps/web/public ./apps/web/public
 
 USER nextjs
 
@@ -59,4 +58,4 @@ EXPOSE 3000
 ENV PORT=3000
 ENV HOSTNAME="0.0.0.0"
 
-CMD ["node", "server.js"]
+CMD ["node", "apps/web/server.js"]
