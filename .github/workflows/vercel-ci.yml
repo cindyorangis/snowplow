@@ -21,25 +21,29 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: '20'
-          cache: 'npm'
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          run_install: false
 
       - name: Install dependencies
-        run: npm ci
+        run: pnpm install --frozen-lockfile
 
       - name: Check formatting
-        run: npx prettier --check .
+        run: pnpm format:check
 
       - name: Run ESLint
-        run: npm run lint
+        run: pnpm lint
 
       - name: Run tests
-        run: npm test -- --run
+        run: pnpm --filter @snowpro/web test -- --run
         env:
           RESEND_API_KEY: ${{ secrets.RESEND_API_KEY }}
           CONTACT_EMAIL: ${{ secrets.CONTACT_EMAIL }}
 
       - name: Build
-        run: npm run build
+        run: pnpm turbo build
         env:
           RESEND_API_KEY: ${{ secrets.RESEND_API_KEY }}
           CONTACT_EMAIL: ${{ secrets.CONTACT_EMAIL }}
