@@ -20,8 +20,6 @@ COPY packages/ ./packages/
 
 RUN pnpm install --frozen-lockfile
 
-RUN npm ci
-
 # ================================
 # Stage 2: Build
 # ================================
