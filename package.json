@@ -14,7 +14,8 @@
     "lint": "turbo lint",
     "lint:web": "turbo lint --filter=@snowpro/web",
     "prepare": "husky",
-    "prettier": "prettier --write ."
+    "format": "prettier --write .",
+    "format:check": "prettier --check ."
   },
   "dependencies": {
     "turbo": "^2.8.16"
