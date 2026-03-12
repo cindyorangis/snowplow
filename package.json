@@ -19,14 +19,13 @@
     "clean": "turbo daemon stop && rimraf --glob \"**/node_modules\" \"**/.next\" \"**/.turbo\"",
     "clean:install": "pnpm clean && pnpm install"
   },
-  "dependencies": {
-    "turbo": "^2.8.16"
-  },
+  "dependencies": {},
   "devDependencies": {
     "eslint": "^9.39.4",
     "husky": "^9.1.7",
     "prettier": "^3.8.1",
-    "rimraf": "^6.1.3"
+    "rimraf": "^6.1.3",
+    "turbo": "^2.8.16"
   },
   "lint-staged": {
     "*.{ts,tsx,js,jsx}": [
