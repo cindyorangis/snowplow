@@ -10,9 +10,11 @@
   "scripts": {
     "dev": "turbo dev",
     "dev:web": "turbo dev --filter=@snowpro/web",
+    "dev:admin": "turbo dev --filter=@snowpro/admin",
     "build": "turbo build",
     "lint": "turbo lint",
     "lint:web": "turbo lint --filter=@snowpro/web",
+    "lint:admin": "turbo lint --filter=@snowpro/admin",
     "prepare": "husky",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
