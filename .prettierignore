@@ -10,6 +10,9 @@ apps/*/node_modules
 apps/*/.next
 packages/*/dist
 
+# Nuxt.js build output
+apps/*/.nuxt
+
 # Package lock files (never format these)
 package-lock.json
 yarn.lock

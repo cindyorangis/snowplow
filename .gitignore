@@ -20,6 +20,10 @@
 /apps/*/.next/
 /out/
 
+# nuxt.js
+/.nuxt/
+/apps/*/.nuxt/
+
 # production
 /build
 
