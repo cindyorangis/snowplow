@@ -12,11 +12,12 @@ RUN corepack enable
 # ================================
 FROM base AS deps
 
-# Copy workspace files
+# Copy root workspace files
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
 
-# Copy package manifests
+# Copy workspace manifests
 COPY apps/web/package.json apps/web/package.json
+COPY packages/*/package.json packages/*/
 
 # Install deps
 RUN pnpm install --frozen-lockfile
@@ -26,10 +27,15 @@ RUN pnpm install --frozen-lockfile
 # ================================
 FROM deps AS builder
 
+WORKDIR /app
+
+# copy repo but keep installed deps
 COPY . .
 
-# Build only the web app
-RUN pnpm turbo run build --filter=web
+# restore deps layer explicitly
+COPY --from=deps /app/node_modules ./node_modules
+
+RUN pnpm turbo run build --filter=@snowpro/web
 
 # ================================
 # Stage 4 — Runtime
