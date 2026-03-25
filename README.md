@@ -1,75 +1,186 @@
 # SnowPro Services
 
-Snow Plow Business - Full Azure Project Plan
+A full-stack monorepo for a fictional snow plow business — built as a hands-on Azure cloud infrastructure portfolio project targeting the AZ-204 exam.
 
-Cloud Infrastructure Engineer Portfolio Project | AZ-204 Exam Prep
+**Live site:** [snowpro-one.vercel.app](https://snowpro-one.vercel.app)
 
-## Project Overview
+---
 
-SnowPro Services is a ghost (fictional) snow plow business used as a hands-on Azure learning environment. The goal is to simulate a real production web application — complete with a customer-facing Next.js website, a serverless backend, role-based authentication, event-driven notifications, and full observability — while building every Azure skill tested on the AZ-204 exam.
+## Project Structure
 
-This project is structured into 5 progressive phases. Each phase delivers a working milestone AND maps directly to AZ-204 exam domains so studying and building happen simultaneously.
+```
+snowpro/
+├── apps/
+│   ├── admin/        # Internal admin dashboard
+│   ├── client/       # Customer-facing website (Next.js)
+│   └── crew/         # Crew-facing job management app
+├── .github/
+│   └── workflows/    # CI/CD pipelines
+├── docker-compose.yml
+├── turbo.json
+├── pnpm-workspace.yaml
+└── package.json
+```
 
-## Your Role
+This is a **pnpm monorepo** managed with [Turborepo](https://turbo.build/). Each app under `apps/` is an independent Next.js application with its own Dockerfile.
 
-Job Title: Azure Developer / Cloud Infrastructure Engineer (Independent Project)
+---
 
-You will wear three hats throughout this project:
+## Tech Stack
 
-- Azure Developer — Build and deploy all application code and Azure services
-- Cloud Engineer — Design and manage the full Azure infrastructure
-- Simulated Business Owner — Act as customer, employee, and admin to test real workflows end to end
+| Layer            | Technology                     |
+| ---------------- | ------------------------------ |
+| Frontend         | Next.js, TypeScript            |
+| Monorepo         | pnpm workspaces, Turborepo     |
+| Containerization | Docker, Docker Compose         |
+| CI/CD            | GitHub Actions                 |
+| Hosting          | Azure Static Web Apps / Vercel |
+| Cloud Platform   | Microsoft Azure                |
+| Code Quality     | Prettier, Husky                |
 
-## Phase Overview
+---
 
-| Phase   | Name                              | Duration  | AZ-104 Domains Covered                                                     |
-| ------- | --------------------------------- | --------- | -------------------------------------------------------------------------- |
-| Phase 1 | Frontend & Static Hosting         | 2-3 weeks | Azure Static Web Apps, Blob Storage, Resource Groups                       |
-| Phase 2 | Networking & Custom Domain        | 2 weeks   | Azure DNS, Front Door, CDN, SSL/TLS                                        |
-| Phase 3 | Serverless Backend & Storage      | 3-4 weeks | Azure Functions, Cosmos DB, Blob Storage SDK, Key Vault, Managed Identity  |
-| Phase 4 | Security, Auth & API Management   | 2-3 weeks | Entra ID (Azure AD B2C), Managed Identity, Key Vault, Azure API Management |
-| Phase 5 | Events, Messaging & Observability | 2 weeks   | Event Grid, Service Bus, Application Insights, Azure Monitor               |
+## Prerequisites
 
-## Phase 1 - Frontend & Static Hosting
+Make sure you have the following installed:
 
-DURATION: 2-3 WEEKS | GOAL: STATIC WEB APPS, BLOB STORAGE, RESOURCE GROUPS
+- [Node.js](https://nodejs.org/) v18+
+- [pnpm](https://pnpm.io/installation) v8+
+- [Docker Desktop](https://www.docker.com/products/docker-desktop/) (for Docker workflow)
 
-### What You'll Build
+---
 
-- Next.js frontend deployed to Azure Static Web Apps (Standard tier for API route support)
-- Azure Blob Storage account for storing job site photos and before/after images
-- Resource Group (rg-snowpro-prod) to organize all project resources
-- GitHub Actions CI/CD pipeline — push to main triggers automatic deployment
+## Getting Started
 
-### AZ-204 Skills Practiced
+### 1. Clone the repo
 
-- Create and configure Azure App Service Web Apps (Static Web Apps uses App Service infrastructure)
-- Deploy code to Azure using GitHub Actions and Azure deployment tokens
-- Configure and manage Azure Blob Storage accounts, containers, and access tiers
-- Set and retrieve blob properties and metadata using the Azure SDK
-- Implement storage lifecycle management policies
+```bash
+git clone https://github.com/cindyorangis/snowpro.git
+cd snowpro
+```
 
-### Deliverable
+### 2. Install dependencies
 
-Live Next.js site at a temporary Azure URL with GitHub Actions deploying on every push. Blob Storage account provisioned and ready for Phase 3.
+```bash
+pnpm install
+```
 
-## Phase 2 — Networking & Custom Domain
+### 3. Set up environment variables
 
-DURATION: 2 WEEKS | GOAL: TLS CONFIGURATION, API SETTINGS, SERVICE CONNECTIONS
+Each app has its own `.env` file. Copy the example files and fill in your values:
 
-### What You'll Build
+```bash
+cp apps/admin/.env.example apps/admin/.env.local
+cp apps/client/.env.example apps/client/.env.local
+cp apps/crew/.env.example apps/crew/.env.local
+```
 
-- Register snowproservices.ca and set up Azure DNS Zone with A/CNAME records
-- Deploy Azure Front Door (Standard tier) — SSL termination, WAF, global CDN routing
-- Configure custom domain and managed HTTPS certificate on Static Web Apps
-- Add Resend domain DNS verification records at the same time (unblocks email in Phase 3)
+---
 
-### AZ-204 Skills Practiced
+## Running Locally
 
-- Configure TLS/SSL settings and service connections on Azure App Service
-- Understand Azure networking concepts relevant to application deployment
-- Configure API settings and custom domains on deployed web applications
+### Option A — npm dev (all apps via Turborepo)
 
-### Deliverable
+Run all apps in parallel with hot reload:
 
-Site live at snowproservices.ca with HTTPS, WAF protection, and global CDN. Resend domain verified — ready to send emails from your real domain in Phase 3.
+```bash
+pnpm dev
+```
+
+Or run a single app:
+
+```bash
+pnpm --filter admin dev
+pnpm --filter client dev
+pnpm --filter crew dev
+```
+
+Default ports:
+
+| App    | URL                   |
+| ------ | --------------------- |
+| client | http://localhost:3000 |
+| admin  | http://localhost:3001 |
+| crew   | http://localhost:3002 |
+
+---
+
+### Option B — Docker
+
+Build and run the web (client) app using Docker Compose:
+
+```bash
+docker compose up --build
+```
+
+The client app will be available at **http://localhost:3000**.
+
+To run in detached mode (background):
+
+```bash
+docker compose up --build -d
+```
+
+To stop containers:
+
+```bash
+docker compose down
+```
+
+#### Build a specific app image manually
+
+Each app has its own Dockerfile located at `apps/<app>/Dockerfile`. To build one directly:
+
+```bash
+# Build from monorepo root so workspace files are available
+docker build -f apps/admin/Dockerfile -t snowpro-admin .
+docker run -p 3001:3001 snowpro-admin
+```
+
+> **Note:** Always build from the monorepo root (`-f apps/<app>/Dockerfile .`), not from inside the app directory. The Dockerfiles are written to reference workspace-level files.
+
+---
+
+## Other Commands
+
+```bash
+# Build all apps
+pnpm build
+
+# Lint all apps
+pnpm lint
+
+# Format with Prettier
+pnpm format
+
+# Type check
+pnpm typecheck
+```
+
+---
+
+## CI/CD
+
+GitHub Actions workflows live in `.github/workflows/`. On push to `main`, the pipeline runs lint, type checks, and deploys to the configured Azure or Vercel environment.
+
+Refer to [CONTRIBUTING.md](./CONTRIBUTING.md) for branch naming, commit conventions, and PR guidelines.
+
+---
+
+## Azure Infrastructure
+
+This project is built across 5 progressive phases, each mapping to AZ-204 exam domains:
+
+| Phase | Focus                      | Azure Services                         |
+| ----- | -------------------------- | -------------------------------------- |
+| 1     | Frontend & Static Hosting  | Static Web Apps, Blob Storage          |
+| 2     | Networking & Custom Domain | DNS, Front Door, CDN, SSL/TLS          |
+| 3     | Serverless Backend         | Azure Functions, Cosmos DB, Key Vault  |
+| 4     | Auth & API Management      | Entra ID (B2C), Managed Identity, APIM |
+| 5     | Events & Observability     | Event Grid, Service Bus, App Insights  |
+
+---
+
+## Contributing
+
+See [CONTRIBUTING.md](./CONTRIBUTING.md).
