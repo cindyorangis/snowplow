@@ -1,4 +1,4 @@
-import { getSupabaseClient } from '@snowpro/lib/supabase'
+import { getSupabaseClient } from '@snowplow/lib/supabase'
 
 export default defineNuxtRouteMiddleware(async () => {
   const supabase = getSupabaseClient(
@@ -11,7 +11,7 @@ export default defineNuxtRouteMiddleware(async () => {
   } = await supabase.auth.getSession()
 
   if (!session) {
-    return navigateTo('https://snowpro.com/login', { external: true })
+    return navigateTo('https://snowplow.services/login', { external: true })
   }
 
   const { data } = await supabase
@@ -21,6 +21,6 @@ export default defineNuxtRouteMiddleware(async () => {
     .single()
 
   if (data?.role !== 'admin') {
-    return navigateTo('https://snowpro.com/login', { external: true })
+    return navigateTo('https://snowplow.services/login', { external: true })
   }
 })

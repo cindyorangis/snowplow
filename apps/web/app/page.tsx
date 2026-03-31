@@ -10,7 +10,7 @@ const whyUs = [
   },
   {
     title: 'Fully Insured',
-    body: 'SnowPro Services carries full liability insurance. Your property — and ours — is covered.',
+    body: 'Snow Plow Services carries full liability insurance. Your property — and ours — is covered.',
   },
   {
     title: 'Serving Toronto & GTA',
@@ -28,10 +28,10 @@ export default function Home() {
       <div className="mx-auto max-w-7xl px-6 lg:px-8">
         <Hero />
         <Services />
-        {/* Why SnowPro */}
+        {/* Why Snow Plow */}
         <div className="mx-auto mt-24 max-w-3xl">
           <h2 className="text-2xl font-bold tracking-tight text-gray-900 dark:text-white">
-            Why SnowPro Services?
+            Why Snow Plow Services?
           </h2>
           <ul className="mt-8 grid grid-cols-1 gap-4 sm:grid-cols-2">
             {whyUs.map((item) => (

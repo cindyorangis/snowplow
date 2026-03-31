@@ -1,12 +1,12 @@
 'use client'
 
 import { useState } from 'react'
-import { getSupabaseClient, getUserRole } from '@snowpro/lib/supabase'
+import { getSupabaseClient, getUserRole } from '@snowplow/lib/supabase'
 
 const ROLE_REDIRECTS = {
-  admin: 'https://admin.snowpro.com',
-  client: 'https://app.snowpro.com',
-  crew: 'https://crew.snowpro.com',
+  admin: 'https://admin.snowplow.services',
+  client: 'https://app.snowplow.services',
+  crew: 'https://crew.snowplow.services',
 }
 
 export default function LoginPage() {
@@ -50,7 +50,7 @@ export default function LoginPage() {
   return (
     <main>
       <form onSubmit={handleLogin}>
-        <h1>Sign in to SnowPro</h1>
+        <h1>Sign in to Snow Plow</h1>
         {error && <p role="alert">{error}</p>}
         <input
           type="email"

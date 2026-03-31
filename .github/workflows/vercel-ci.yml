@@ -37,7 +37,7 @@ jobs:
         run: pnpm lint
 
       - name: Run tests
-        run: pnpm --filter @snowpro/web test -- --run
+        run: pnpm --filter @snowplow/web test -- --run
         env:
           RESEND_API_KEY: ${{ secrets.RESEND_API_KEY }}
           CONTACT_EMAIL: ${{ secrets.CONTACT_EMAIL }}

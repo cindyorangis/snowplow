@@ -1,15 +1,15 @@
-# SnowPro Services
+# Snow Plow Services
 
 A full-stack monorepo for a fictional snow plow business — built as a hands-on Azure cloud infrastructure portfolio project targeting the AZ-204 exam.
 
-**Live site:** [snowpro-one.vercel.app](https://snowpro-one.vercel.app)
+**Live site:** [snowplow-one.vercel.app](https://snowplow-one.vercel.app)
 
 ---
 
 ## Project Structure
 
 ```
-snowpro/
+snowplow/
 ├── apps/
 │   ├── admin/        # Internal admin dashboard
 │   ├── client/       # Customer-facing website (Next.js)
@@ -55,8 +55,8 @@ Make sure you have the following installed:
 ### 1. Clone the repo
 
 ```bash
-git clone https://github.com/cindyorangis/snowpro.git
-cd snowpro
+git clone https://github.com/cindyorangis/snowplow.git
+cd snowplow
 ```
 
 ### 2. Install dependencies
@@ -133,8 +133,8 @@ Each app has its own Dockerfile located at `apps/<app>/Dockerfile`. To build one
 
 ```bash
 # Build from monorepo root so workspace files are available
-docker build -f apps/admin/Dockerfile -t snowpro-admin .
-docker run -p 3001:3001 snowpro-admin
+docker build -f apps/admin/Dockerfile -t snowplow-admin .
+docker run -p 3001:3001 snowplow-admin
 ```
 
 > **Note:** Always build from the monorepo root (`-f apps/<app>/Dockerfile .`), not from inside the app directory. The Dockerfiles are written to reference workspace-level files.

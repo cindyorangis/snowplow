@@ -5,8 +5,8 @@ services:
     build:
       context: . # monorepo root (so all workspace files are available)
       dockerfile: apps/web/Dockerfile # each app has its own Dockerfile
-    image: snowpro-web
-    container_name: snowpro-web
+    image: snowplow-web
+    container_name: snowplow-web
     ports:
       - '3000:3000'
     env_file:

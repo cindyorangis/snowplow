@@ -3,7 +3,7 @@ import {
   getSupabaseClient,
   getUserRole,
   type Role,
-} from '@snowpro/lib/supabase'
+} from '@snowplow/lib/supabase'
 
 const supabase = getSupabaseClient(
   import.meta.env.NUXT_PUBLIC_SUPABASE_URL,

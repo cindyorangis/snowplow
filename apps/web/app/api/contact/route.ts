@@ -24,12 +24,12 @@ export async function POST(req: Request) {
     await resend.emails.send({
       from: 'onboarding@resend.dev',
       to: email,
-      subject: `We received your message — SnowPro Services`,
+      subject: `We received your message — Snow Plow Services`,
       html: `
         <h2>Thanks for reaching out, ${name}!</h2>
         <p>We've received your message and will get back to you within 24 hours.</p>
         <br />
-        <p>— The SnowPro Team</p>
+        <p>— The Snow Plow Team</p>
       `,
     })
 

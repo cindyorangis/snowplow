@@ -1,5 +1,5 @@
 {
-  "name": "snowpro",
+  "name": "snowplow",
   "version": "0.1.0",
   "private": true,
   "packageManager": "pnpm@9.0.0",
@@ -9,12 +9,12 @@
   ],
   "scripts": {
     "dev": "turbo dev",
-    "dev:web": "turbo dev --filter=@snowpro/web",
-    "dev:admin": "turbo dev --filter=@snowpro/admin",
+    "dev:web": "turbo dev --filter=@snowplow/web",
+    "dev:admin": "turbo dev --filter=@snowplow/admin",
     "build": "turbo build",
     "lint": "turbo lint",
-    "lint:web": "turbo lint --filter=@snowpro/web",
-    "lint:admin": "turbo lint --filter=@snowpro/admin",
+    "lint:web": "turbo lint --filter=@snowplow/web",
+    "lint:admin": "turbo lint --filter=@snowplow/admin",
     "prepare": "husky",
     "format": "prettier --write .",
     "format:check": "prettier --check .",

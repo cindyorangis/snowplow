@@ -5,7 +5,7 @@ import { mockSend } from '../../../../__mocks__/resend'
 vi.mock('resend')
 
 vi.stubEnv('RESEND_API_KEY', 're_test_key')
-vi.stubEnv('CONTACT_EMAIL', 'hello@snowproservices.ca')
+vi.stubEnv('CONTACT_EMAIL', 'hello@snowplow.services')
 
 function makeRequest(body: object) {
   return new Request('http://localhost:3000/api/contact', {
@@ -45,7 +45,7 @@ describe('POST /api/contact', () => {
     await POST(makeRequest(validBody))
 
     const firstCall = mockSend.mock.calls[0][0]
-    expect(firstCall.to).toBe('hello@snowproservices.ca')
+    expect(firstCall.to).toBe('hello@snowplow.services')
     expect(firstCall.subject).toContain('John Smith')
   })
 
