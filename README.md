@@ -1,6 +1,6 @@
 # Snow Plow Services
 
-A full-stack monorepo for a fictional snow plow business — built as a hands-on Azure cloud infrastructure portfolio project targeting the AZ-204 exam.
+A full-stack monorepo for a snow removal service business — built as a portfolio project demonstrating cloud infrastructure, DevOps practices, and modern full-stack development.
 
 **Live site:** [snowplow-one.vercel.app](https://snowplow-one.vercel.app)
 
@@ -9,34 +9,52 @@ A full-stack monorepo for a fictional snow plow business — built as a hands-on
 ## Project Structure
 
 ```
-snowplow/
+snowpro/
 ├── apps/
-│   ├── admin/        # Internal admin dashboard
-│   ├── client/       # Customer-facing website (Next.js)
-│   └── crew/         # Crew-facing job management app
+│   ├── web/          # Marketing site + shared login (Next.js)
+│   ├── admin/        # Internal admin dashboard (Nuxt/Vue)
+│   ├── client/       # Customer-facing app (Nuxt/Vue) — in progress
+│   └── crew/         # Crew job management app (Nuxt/Vue) — in progress
+├── packages/
+│   └── lib/          # Shared Supabase client, types, and utilities
 ├── .github/
 │   └── workflows/    # CI/CD pipelines
-├── docker-compose.yml
 ├── turbo.json
 ├── pnpm-workspace.yaml
 └── package.json
 ```
 
-This is a **pnpm monorepo** managed with [Turborepo](https://turbo.build/). Each app under `apps/` is an independent Next.js application with its own Dockerfile.
+This is a **pnpm monorepo** managed with [Turborepo](https://turbo.build/). Apps are deployed independently to Vercel. Shared code lives in `packages/lib` and is consumed by all apps via workspace linking.
 
 ---
 
 ## Tech Stack
 
-| Layer            | Technology                     |
-| ---------------- | ------------------------------ |
-| Frontend         | Next.js, TypeScript            |
-| Monorepo         | pnpm workspaces, Turborepo     |
-| Containerization | Docker, Docker Compose         |
-| CI/CD            | GitHub Actions                 |
-| Hosting          | Azure Static Web Apps / Vercel |
-| Cloud Platform   | Microsoft Azure                |
-| Code Quality     | Prettier, Husky                |
+| Layer                      | Technology                                     |
+| -------------------------- | ---------------------------------------------- |
+| Marketing site             | Next.js, TypeScript                            |
+| Admin / Client / Crew apps | Nuxt 3, Vue, TypeScript                        |
+| Shared package             | `@snowpro/lib` — Supabase client, shared types |
+| Auth & Database            | Supabase (PostgreSQL + Auth)                   |
+| Payments                   | Stripe (planned)                               |
+| Monorepo                   | pnpm workspaces, Turborepo                     |
+| CI/CD                      | GitHub Actions                                 |
+| Hosting                    | Vercel (per-app deployments)                   |
+| Code Quality               | Prettier, Husky                                |
+
+---
+
+## How Auth Works
+
+Authentication is handled by Supabase. All users log in through a single login page on the marketing site (`apps/web`). After login, the app reads the user's role from the `profiles` table and redirects them to the correct app:
+
+| Role     | Redirects to            |
+| -------- | ----------------------- |
+| `admin`  | admin.snowplow.services |
+| `client` | app.snowplow.services   |
+| `crew`   | crew.snowplow.services  |
+
+Each app (admin, client, crew) protects its routes with Nuxt middleware that validates the session and role on every page load. Unauthenticated or unauthorized users are bounced back to the marketing site login.
 
 ---
 
@@ -90,18 +108,38 @@ pnpm dev
 Or run a single app:
 
 ```bash
-pnpm --filter admin dev
-pnpm --filter client dev
-pnpm --filter crew dev
+pnpm --filter @snowplow/web dev
+pnpm --filter @snowplow/admin dev
+pnpm --filter @snowplow/client dev
+pnpm --filter @snowplow/crew dev
 ```
 
 Default ports:
 
 | App    | URL                   |
 | ------ | --------------------- |
-| client | http://localhost:3000 |
+| web    | http://localhost:3000 |
 | admin  | http://localhost:3001 |
-| crew   | http://localhost:3002 |
+| client | http://localhost:3002 |
+| crew   | http://localhost:3003 |
+
+---
+
+## Other Commands
+
+```bash
+# Build all apps
+pnpm build
+
+# Lint all apps
+pnpm lint
+
+# Format with Prettier
+pnpm format
+
+# Type check
+pnpm typecheck
+```
 
 ---
 
@@ -141,21 +179,60 @@ docker run -p 3001:3001 snowplow-admin
 
 ---
 
-## Other Commands
+## Supabase Setup
 
-```bash
-# Build all apps
-pnpm build
+The database schema lives in Supabase. On first setup, run the following in the Supabase SQL editor:
 
-# Lint all apps
-pnpm lint
+```sql
+create table public.profiles (
+  id uuid references auth.users(id) on delete cascade primary key,
+  role text not null check (role in ('admin', 'client', 'crew')),
+  full_name text,
+  created_at timestamptz default now()
+);
 
-# Format with Prettier
-pnpm format
+create or replace function public.handle_new_user()
+returns trigger as $$
+begin
+  insert into public.profiles (id, role)
+  values (new.id, 'client');
+  return new;
+end;
+$$ language plpgsql security definer;
 
-# Type check
-pnpm typecheck
+create trigger on_auth_user_created
+  after insert on auth.users
+  for each row execute procedure public.handle_new_user();
+
+alter table public.profiles enable row level security;
+
+create policy "users can read own profile"
+  on public.profiles for select
+  using (auth.uid() = id);
 ```
+
+New users default to the `client` role. To assign an admin:
+
+```sql
+update public.profiles
+set role = 'admin'
+where id = (select id from auth.users where email = 'you@example.com');
+```
+
+---
+
+## Roadmap
+
+- [x] Monorepo setup (pnpm + Turborepo)
+- [x] CI/CD via GitHub Actions
+- [x] Supabase auth with role-based routing
+- [x] Marketing site login page (Next.js)
+- [x] Admin app with session-protected routes (Nuxt)
+- [ ] Admin dashboard UI — job and user management
+- [ ] Client app — service requests, job status
+- [ ] Crew app — job assignments, schedule view
+- [ ] Stripe — card-on-file at registration, billing
+- [ ] Terraform — infrastructure as code for cloud resources
 
 ---
 
@@ -164,20 +241,6 @@ pnpm typecheck
 GitHub Actions workflows live in `.github/workflows/`. On push to `main`, the pipeline runs lint, type checks, and deploys to the configured Azure or Vercel environment.
 
 Refer to [CONTRIBUTING.md](./CONTRIBUTING.md) for branch naming, commit conventions, and PR guidelines.
-
----
-
-## Azure Infrastructure
-
-This project is built across 5 progressive phases, each mapping to AZ-204 exam domains:
-
-| Phase | Focus                      | Azure Services                         |
-| ----- | -------------------------- | -------------------------------------- |
-| 1     | Frontend & Static Hosting  | Static Web Apps, Blob Storage          |
-| 2     | Networking & Custom Domain | DNS, Front Door, CDN, SSL/TLS          |
-| 3     | Serverless Backend         | Azure Functions, Cosmos DB, Key Vault  |
-| 4     | Auth & API Management      | Entra ID (B2C), Managed Identity, APIM |
-| 5     | Events & Observability     | Event Grid, Service Bus, App Insights  |
 
 ---
 
