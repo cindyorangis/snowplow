@@ -4,6 +4,11 @@ import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { getSupabaseClient, getUserRole } from '@snowpro/lib/supabase'
 
+const supabase = getSupabaseClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL,
+  process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_DEFAULT_KEY
+)
+
 const ROLE_REDIRECTS = {
   admin: 'https://admin.snowpro.com',
   client: 'https://app.snowpro.com',
