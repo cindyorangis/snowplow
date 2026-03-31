@@ -1,13 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { useRouter } from 'next/navigation'
 import { getSupabaseClient, getUserRole } from '@snowpro/lib/supabase'
-
-const supabase = getSupabaseClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL,
-  process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_DEFAULT_KEY
-)
 
 const ROLE_REDIRECTS = {
   admin: 'https://admin.snowpro.com',
@@ -16,7 +10,6 @@ const ROLE_REDIRECTS = {
 }
 
 export default function LoginPage() {
-  const router = useRouter()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [error, setError] = useState<string | null>(null)
@@ -27,7 +20,11 @@ export default function LoginPage() {
     setError(null)
     setLoading(true)
 
-    const supabase = getSupabaseClient()
+    const supabase = getSupabaseClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL,
+      process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_DEFAULT_KEY
+    )
+
     const { error: authError } = await supabase.auth.signInWithPassword({
       email,
       password,
