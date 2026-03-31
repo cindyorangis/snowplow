@@ -1,5 +1,10 @@
 <script setup lang="ts">
-import { supabase } from '@snowpro/lib/supabase' // ← replaces useSupabaseClient()
+import { getSupabaseClient } from '@snowpro/lib/supabase'
+
+const supabase = getSupabaseClient(
+  import.meta.env.NUXT_PUBLIC_SUPABASE_URL,
+  import.meta.env.NUXT_PUBLIC_SUPABASE_PUBLISHABLE_DEFAULT_KEY
+)
 
 const email = ref('')
 const password = ref('')
