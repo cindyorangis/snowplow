@@ -1,100 +1,72 @@
 'use client'
 
 import { useState } from 'react'
-import { signIn } from 'next-auth/react'
 import { useRouter } from 'next/navigation'
+import { supabase, getUserRole } from '@snowpro/lib/supabase'
+
+const ROLE_REDIRECTS = {
+  admin: 'https://admin.snowpro.com',
+  client: 'https://app.snowpro.com',
+  crew: 'https://crew.snowpro.com',
+}
 
 export default function LoginPage() {
   const router = useRouter()
-  const [error, setError] = useState('')
+  const [email, setEmail] = useState('')
+  const [password, setPassword] = useState('')
+  const [error, setError] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
 
-  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
+  async function handleLogin(e: React.FormEvent) {
     e.preventDefault()
+    setError(null)
     setLoading(true)
-    setError('')
 
-    const form = e.currentTarget
-    const email = (form.elements.namedItem('email') as HTMLInputElement).value
-    const password = (form.elements.namedItem('password') as HTMLInputElement)
-      .value
-
-    const result = await signIn('credentials', {
+    const { error: authError } = await supabase.auth.signInWithPassword({
       email,
       password,
-      redirect: false,
     })
 
-    if (result?.error) {
-      setError('Invalid email or password')
+    if (authError) {
+      setError(authError.message)
       setLoading(false)
       return
     }
 
-    router.push('/dashboard')
+    const role = await getUserRole()
+
+    if (!role || !ROLE_REDIRECTS[role]) {
+      setError('Account not configured. Contact support.')
+      setLoading(false)
+      return
+    }
+
+    window.location.href = ROLE_REDIRECTS[role]
   }
 
   return (
-    <div className="mx-auto max-w-sm px-6 py-24">
-      <h1 className="text-3xl font-bold text-gray-900 dark:text-white">
-        Sign in
-      </h1>
-
-      {error && (
-        <div className="mt-4 rounded-md bg-red-50 p-3 text-sm text-red-800">
-          {error}
-        </div>
-      )}
-
-      <form onSubmit={handleSubmit} className="mt-8 space-y-6">
-        <div>
-          <label
-            htmlFor="email"
-            className="block text-sm font-semibold text-gray-900 dark:text-white"
-          >
-            Email
-          </label>
-          <input
-            id="email"
-            name="email"
-            type="email"
-            required
-            className="mt-2 block w-full rounded-md border-0 px-3.5 py-2 text-gray-900 shadow-sm ring-1 ring-gray-300 focus:ring-2 focus:ring-blue-600"
-          />
-        </div>
-
-        <div>
-          <label
-            htmlFor="password"
-            className="block text-sm font-semibold text-gray-900 dark:text-white"
-          >
-            Password
-          </label>
-          <input
-            id="password"
-            name="password"
-            type="password"
-            required
-            className="mt-2 block w-full rounded-md border-0 px-3.5 py-2 text-gray-900 shadow-sm ring-1 ring-gray-300 focus:ring-2 focus:ring-blue-600"
-          />
-        </div>
-
-        <button
-          type="submit"
-          disabled={loading}
-          className="w-full rounded-md bg-blue-600 px-4 py-3 text-sm font-semibold text-white hover:bg-blue-500 disabled:opacity-50"
-        >
-          {loading ? 'Signing in...' : 'Sign in'}
+    <main>
+      <form onSubmit={handleLogin}>
+        <h1>Sign in to SnowPro</h1>
+        {error && <p role="alert">{error}</p>}
+        <input
+          type="email"
+          placeholder="Email"
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
+          required
+        />
+        <input
+          type="password"
+          placeholder="Password"
+          value={password}
+          onChange={(e) => setPassword(e.target.value)}
+          required
+        />
+        <button type="submit" disabled={loading}>
+          {loading ? 'Signing in…' : 'Sign in'}
         </button>
       </form>
-
-      {/* Test credentials helper — remove before going live */}
-      <div className="mt-8 rounded-md bg-gray-50 p-4 text-xs text-gray-500 dark:bg-gray-800 dark:text-gray-400">
-        <p className="font-semibold mb-2">Test accounts:</p>
-        <p>admin@snowpro.ca / admin123</p>
-        <p>customer@test.com / customer123</p>
-        <p>employee@test.com / employee123</p>
-      </div>
-    </div>
+    </main>
   )
 }
