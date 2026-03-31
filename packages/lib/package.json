@@ -1,0 +1,21 @@
+{
+  "name": "@snowpro/lib",
+  "version": "1.0.0",
+  "description": "",
+  "license": "ISC",
+  "author": "",
+  "type": "module",
+  "main": "./src/index.ts",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "dependencies": {
+    "@supabase/supabase-js": "^2.101.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20"
+  },
+  "exports": {
+    "./supabase": "./src/supabase.ts"
+  }
+}

@@ -20,7 +20,8 @@
     "next-auth": "^5.0.0-beta.30",
     "react": "19.2.3",
     "react-dom": "19.2.3",
-    "resend": "^6.9.3"
+    "resend": "^6.9.3",
+    "@snowpro/lib": "workspace:*"
   },
   "devDependencies": {
     "@next/bundle-analyzer": "^16.1.6",
