@@ -1,9 +1,10 @@
 <script setup lang="ts">
+import { supabase } from '@snowpro/lib/supabase' // ← replaces useSupabaseClient()
+
 const email = ref('')
 const password = ref('')
 const error = ref<string | null>(null)
 const loading = ref(false)
-const supabase = useSupabaseClient()
 const router = useRouter()
 
 async function handleLogin() {
