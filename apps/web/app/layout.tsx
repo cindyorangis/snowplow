@@ -16,16 +16,16 @@ const geistMono = Geist_Mono({
 })
 
 export const metadata: Metadata = {
-  title: 'SnowPro Services | Toronto Snow Removal & De-Icing',
+  title: 'Snow Plow Services | Toronto Snow Removal & De-Icing',
   description:
     'Professional residential & commercial snow removal in Toronto & the GTA. Seasonal contracts, salting, and de-icing. Get your free quote today.',
   keywords:
     'snow removal, snow plowing, snow shoveling, snow blowing, salting, de-icing, Toronto, GTA, residential snow removal, commercial snow removal, seasonal contracts',
   openGraph: {
-    title: 'SnowPro Services | Toronto Snow Removal & De-Icing',
+    title: 'Snow Plow Services | Toronto Snow Removal & De-Icing',
     description:
       'Professional residential & commercial snow removal in Toronto & the GTA. Seasonal contracts, salting, and de-icing. Get your free quote today.',
-    siteName: 'SnowPro Services',
+    siteName: 'Snow Plow Services',
   },
 }
 

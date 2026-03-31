@@ -16,7 +16,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
           {
             id: '1',
             name: 'Admin User',
-            email: 'admin@snowpro.ca',
+            email: 'admin@snowplow.services',
             password: 'admin123',
             role: 'admin' as const,
           },

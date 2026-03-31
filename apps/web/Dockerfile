@@ -1,5 +1,5 @@
 # Build from monorepo root:
-# docker build -f apps/web/Dockerfile -t snowpro-web .
+# docker build -f apps/web/Dockerfile -t snowplow-web .
 
 FROM node:22-alpine AS base
 RUN corepack enable && corepack prepare pnpm@9.15.0 --activate
@@ -19,7 +19,7 @@ COPY packages/ ./packages/
 COPY apps/web/ ./apps/web/
 
 # Install (node_modules won't be overwritten since .dockerignore excludes them)
-RUN pnpm install --frozen-lockfile --filter @snowpro/web...
+RUN pnpm install --frozen-lockfile --filter @snowplow/web...
 
 # Build
 WORKDIR /app/apps/web

@@ -17,7 +17,7 @@
   ],
   "compilerOptions": {
     "paths": {
-      "@snowpro/lib/*": ["../../packages/lib/src/*"]
+      "@snowplow/lib/*": ["../../packages/lib/src/*"]
     }
   }
 }
