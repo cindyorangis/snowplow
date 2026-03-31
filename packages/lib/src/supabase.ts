@@ -1,17 +1,26 @@
-import { createClient } from '@supabase/supabase-js'
-
-export const supabase = createClient(
-  process.env.NUXT_PUBLIC_SUPABASE_URL ??
-    process.env.NEXT_PUBLIC_SUPABASE_URL ??
-    '',
-  process.env.NUXT_PUBLIC_SUPABASE_ANON_KEY ??
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ??
-    ''
-)
+import { createClient, type SupabaseClient } from '@supabase/supabase-js'
 
 export type Role = 'admin' | 'client' | 'crew'
 
+let _client: SupabaseClient | null = null
+
+export function getSupabaseClient(): SupabaseClient {
+  if (_client) return _client
+
+  const url =
+    process.env.NEXT_PUBLIC_SUPABASE_URL ?? process.env.NUXT_PUBLIC_SUPABASE_URL
+  const key =
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ??
+    process.env.NUXT_PUBLIC_SUPABASE_ANON_KEY
+
+  if (!url || !key) throw new Error('Supabase env vars are not set')
+
+  _client = createClient(url, key)
+  return _client
+}
+
 export async function getUserRole(): Promise<Role | null> {
+  const supabase = getSupabaseClient()
   const {
     data: { user },
   } = await supabase.auth.getUser()
