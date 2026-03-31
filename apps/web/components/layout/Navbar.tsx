@@ -49,7 +49,7 @@ export default function Navbar() {
         </div>
         <div className="flex flex-1 items-center justify-end gap-x-6">
           <Link
-            href="#"
+            href="/login"
             className="hidden text-sm/6 font-semibold text-gray-900 lg:block dark:text-white"
           >
             Log in
@@ -123,7 +123,7 @@ export default function Navbar() {
               </div>
               <div className="py-6">
                 <a
-                  href="#"
+                  href="/login"
                   className="-mx-3 block rounded-lg px-3 py-2.5 text-base/7 font-semibold text-gray-900 hover:bg-gray-50 dark:text-white dark:hover:bg-white/5"
                 >
                   Log in
