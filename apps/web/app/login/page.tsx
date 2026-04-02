@@ -36,7 +36,10 @@ export default function LoginPage() {
       return
     }
 
-    const role = await getUserRole()
+    const role = await getUserRole(
+      process.env.NEXT_PUBLIC_SUPABASE_URL,
+      process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_DEFAULT_KEY
+    )
 
     if (!role || !ROLE_REDIRECTS[role]) {
       setError('Account not configured. Contact support.')

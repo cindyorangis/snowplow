@@ -11,8 +11,11 @@ export function getSupabaseClient(url?: string, key?: string): SupabaseClient {
   return _client
 }
 
-export async function getUserRole(): Promise<Role | null> {
-  const supabase = getSupabaseClient()
+export async function getUserRole(
+  url?: string,
+  key?: string
+): Promise<Role | null> {
+  const supabase = getSupabaseClient(url, key)
   const {
     data: { user },
   } = await supabase.auth.getUser()

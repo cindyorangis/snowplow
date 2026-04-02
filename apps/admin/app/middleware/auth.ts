@@ -2,6 +2,7 @@ import { getSupabaseClient } from '@snowplow/lib/supabase'
 
 export default defineNuxtRouteMiddleware(async () => {
   if (import.meta.server) return
+  if (import.meta.env.DEV) return
 
   const supabase = getSupabaseClient(
     import.meta.env.NUXT_PUBLIC_SUPABASE_URL,

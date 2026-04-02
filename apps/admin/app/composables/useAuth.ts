@@ -5,17 +5,26 @@ import {
   type Role,
 } from '@snowplow/lib/supabase'
 
-const supabase = getSupabaseClient(
-  import.meta.env.NUXT_PUBLIC_SUPABASE_URL,
-  import.meta.env.NUXT_PUBLIC_SUPABASE_PUBLISHABLE_DEFAULT_KEY
-)
-
 export function useAuth() {
   const role = ref<Role | null>(null)
   const ready = ref(false)
 
   onMounted(async () => {
-    role.value = await getUserRole()
+    if (import.meta.env.DEV) {
+      role.value = 'admin'
+      ready.value = true
+      return
+    }
+
+    const supabase = getSupabaseClient(
+      import.meta.env.NUXT_PUBLIC_SUPABASE_URL,
+      import.meta.env.NUXT_PUBLIC_SUPABASE_PUBLISHABLE_DEFAULT_KEY
+    )
+
+    role.value = await getUserRole(
+      import.meta.env.NUXT_PUBLIC_SUPABASE_URL,
+      import.meta.env.NUXT_PUBLIC_SUPABASE_PUBLISHABLE_DEFAULT_KEY
+    )
     ready.value = true
   })
 
