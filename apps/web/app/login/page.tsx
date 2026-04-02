@@ -44,7 +44,16 @@ export default function LoginPage() {
       return
     }
 
-    window.location.href = ROLE_REDIRECTS[role]
+    // Get the session tokens to pass to the subdomain
+    const {
+      data: { session },
+    } = await supabase.auth.getSession()
+
+    const url = new URL(`${ROLE_REDIRECTS[role]}`)
+    url.searchParams.set('access_token', session!.access_token)
+    url.searchParams.set('refresh_token', session!.refresh_token)
+
+    window.location.href = url.toString()
   }
 
   return (
