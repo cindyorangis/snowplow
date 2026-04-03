@@ -6,9 +6,9 @@ const withBundleAnalyzer = bundleAnalyzer({
   enabled: process.env.ANALYZE === 'true',
 })
 
-const nextConfig: NextConfig = {
+const nextConfig = {
   output: 'standalone',
   outputFileTracingRoot: path.join(__dirname, '../../'), // point to monorepo root
-}
+} satisfies NextConfig
 
 export default withBundleAnalyzer(nextConfig)
