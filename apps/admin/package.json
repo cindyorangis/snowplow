@@ -12,8 +12,12 @@
     "postinstall": "nuxt prepare"
   },
   "dependencies": {
-    "nuxt": "^4.4.2",
+    "@headlessui/vue": "^1.7.23",
+    "@heroicons/vue": "^2.2.0",
     "@snowplow/lib": "workspace:*",
+    "@tailwindcss/vite": "^4.2.2",
+    "nuxt": "^4.4.2",
+    "tailwindcss": "^4",
     "vue": "^3.5.30",
     "vue-router": "^5.0.3"
   }
