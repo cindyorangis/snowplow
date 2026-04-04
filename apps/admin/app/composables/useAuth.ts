@@ -1,9 +1,5 @@
 import { ref, onMounted } from 'vue'
-import {
-  getSupabaseClient,
-  getUserRole,
-  type Role,
-} from '@snowplow/lib/supabase'
+import { getUserRole, type Role } from '@snowplow/lib/supabase'
 
 export function useAuth() {
   const role = ref<Role | null>(null)
@@ -16,15 +12,10 @@ export function useAuth() {
       return
     }
 
-    const supabase = getSupabaseClient(
-      import.meta.env.NUXT_PUBLIC_SUPABASE_URL,
-      import.meta.env.NUXT_PUBLIC_SUPABASE_PUBLISHABLE_DEFAULT_KEY
-    )
+    const url = import.meta.env.NUXT_PUBLIC_SUPABASE_URL
+    const key = import.meta.env.NUXT_PUBLIC_SUPABASE_PUBLISHABLE_DEFAULT_KEY
 
-    role.value = await getUserRole(
-      import.meta.env.NUXT_PUBLIC_SUPABASE_URL,
-      import.meta.env.NUXT_PUBLIC_SUPABASE_PUBLISHABLE_DEFAULT_KEY
-    )
+    role.value = await getUserRole(url, key)
     ready.value = true
   })
 
