@@ -62,8 +62,8 @@ Each app (admin, client, crew) protects its routes with Nuxt middleware that val
 
 Make sure you have the following installed:
 
-- [Node.js](https://nodejs.org/) v18+
-- [pnpm](https://pnpm.io/installation) v8+
+- [Node.js](https://nodejs.org/) v20+
+- [pnpm](https://pnpm.io/installation) v9+
 - [Docker Desktop](https://www.docker.com/products/docker-desktop/) (for Docker workflow)
 
 ---
