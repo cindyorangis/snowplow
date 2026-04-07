@@ -57,6 +57,12 @@ const features = [
   },
 ]
 
+export const metadata = {
+  alternates: {
+    canonical: 'https://www.snowplow.services/services',
+  },
+}
+
 export default function Services() {
   return (
     <div className="bg-white py-24 sm:py-32 dark:bg-gray-900">
