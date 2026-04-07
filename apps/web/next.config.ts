@@ -9,6 +9,7 @@ const withBundleAnalyzer = bundleAnalyzer({
 const nextConfig = {
   output: 'standalone',
   outputFileTracingRoot: path.join(__dirname, '../../'), // point to monorepo root
+  trailingSlash: false,
 } satisfies NextConfig
 
 export default withBundleAnalyzer(nextConfig)

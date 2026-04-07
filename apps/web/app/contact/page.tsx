@@ -1,10 +1,8 @@
 'use client'
 
 import { useState } from 'react'
-
-import Alert from '@/components/ui/Alert'
-
 import { ChevronDownIcon } from '@heroicons/react/16/solid'
+import Alert from '@/components/ui/Alert'
 
 export default function ContactPage() {
   const [formData, setFormData] = useState({

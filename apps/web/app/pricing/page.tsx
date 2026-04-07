@@ -34,6 +34,12 @@ const tiers = [
   },
 ]
 
+export const metadata = {
+  alternates: {
+    canonical: 'https://www.snowplow.services/pricing',
+  },
+}
+
 export default function Pricing() {
   return (
     <div className="overflow-hidden bg-gray-900">
