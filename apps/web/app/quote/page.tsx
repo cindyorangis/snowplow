@@ -23,8 +23,8 @@ export default function QuotePage() {
               Tell us about your property
             </h2>
             <p className="mt-1 text-sm/6 text-gray-600 dark:text-gray-400">
-              We'll use this to confirm service availability and size up the
-              job.
+              We&apos;ll use this to confirm service availability and size up
+              the job.
             </p>
 
             <div className="mt-8 space-y-10">

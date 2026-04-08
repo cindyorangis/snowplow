@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import Image from 'next/image'
 import { getSupabaseClient, getUserRole } from '@snowplow/lib/supabase'
 
 const ROLE_REDIRECTS = {
@@ -63,7 +64,11 @@ export default function LoginPage() {
     <div className="flex min-h-full flex-col justify-center px-6 py-12 lg:px-8">
       <div className="sm:mx-auto sm:w-full sm:max-w-sm">
         {/* Replace src with your SnowPro logo */}
-        <img alt="SnowPro" src="/vercel.svg" className="mx-auto h-10 w-auto" />
+        <Image
+          alt="SnowPro"
+          src="/vercel.svg"
+          className="mx-auto h-10 w-auto"
+        />
         <h2 className="mt-10 text-center text-2xl/9 font-bold tracking-tight text-gray-900 dark:text-white">
           Sign in to your account
         </h2>
