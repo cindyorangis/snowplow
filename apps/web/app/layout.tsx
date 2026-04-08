@@ -1,4 +1,5 @@
 import type { Metadata } from 'next'
+import { Analytics } from '@vercel/analytics/next'
 import { Geist, Geist_Mono } from 'next/font/google'
 
 import Navbar from '@/components/layout/Navbar'
@@ -48,6 +49,7 @@ export default function RootLayout({
           <Footer />
         </div>
       </body>
+      <Analytics />
     </html>
   )
 }
