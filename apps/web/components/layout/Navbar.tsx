@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import Image from 'next/image'
 import Link from 'next/link'
 import { Dialog, DialogPanel } from '@headlessui/react'
 import { Bars3Icon, XMarkIcon } from '@heroicons/react/24/outline'
@@ -24,13 +25,13 @@ export default function Navbar() {
         <div className="flex lg:flex-1">
           <Link href="/" className="-m-1.5 p-1.5">
             <span className="sr-only">Snow Plow Services</span>
-            <img
-              alt=""
+            <Image
+              alt="tailwindcss logo"
               src="https://tailwindcss.com/plus-assets/img/logos/mark.svg?color=indigo&shade=600"
               className="h-8 w-auto dark:hidden"
             />
-            <img
-              alt=""
+            <Image
+              alt="tailwindcss logo"
               src="https://tailwindcss.com/plus-assets/img/logos/mark.svg?color=indigo&shade=500"
               className="hidden h-8 w-auto dark:block"
             />
@@ -82,13 +83,13 @@ export default function Navbar() {
           <div className="flex items-center gap-x-6">
             <a href="#" className="-m-1.5 p-1.5">
               <span className="sr-only">Snow Plow Services</span>
-              <img
-                alt=""
+              <Image
+                alt="tailwindcss logo"
                 src="https://tailwindcss.com/plus-assets/img/logos/mark.svg?color=indigo&shade=600"
                 className="h-8 w-auto dark:hidden"
               />
-              <img
-                alt=""
+              <Image
+                alt="tailwindcss logo"
                 src="https://tailwindcss.com/plus-assets/img/logos/mark.svg?color=indigo&shade=500"
                 className="hidden h-8 w-auto dark:block"
               />

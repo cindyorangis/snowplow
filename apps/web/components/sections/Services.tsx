@@ -1,3 +1,5 @@
+import Image from 'next/image'
+
 import {
   HomeIcon,
   BuildingOffice2Icon,
@@ -44,7 +46,7 @@ export default function Services() {
               key={feature.src}
               className="overflow-hidden rounded-2xl bg-gray-100 dark:bg-gray-800 aspect-[4/3]"
             >
-              <img
+              <Image
                 src={feature.src}
                 alt={feature.alt}
                 className="h-full w-full object-cover transition-transform duration-300 hover:scale-105"
