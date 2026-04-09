@@ -31,6 +31,10 @@ export const metadata: Metadata = {
   alternates: {
     canonical: 'https://www.snowplow.services',
   },
+  robots: {
+    index: true,
+    follow: true,
+  },
 }
 
 export default function RootLayout({
