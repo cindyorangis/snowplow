@@ -4,12 +4,6 @@ import { useState } from 'react'
 import { ChevronDownIcon } from '@heroicons/react/16/solid'
 import Alert from '@/components/ui/Alert'
 
-export const metadata = {
-  alternates: {
-    canonical: 'https://www.snowplow.services/contact',
-  },
-}
-
 export default function ContactPage() {
   const [formData, setFormData] = useState({
     name: '',
@@ -69,7 +63,7 @@ export default function ContactPage() {
         <h2 className="text-balance text-4xl font-semibold tracking-tight text-gray-900 sm:text-5xl dark:text-white">
           Contact Us
         </h2>
-        <p className="mt-2 text-lg/8 text-gray-600 dark:text-gray-400">
+        <p className="mt-4 text-lg/8 text-gray-600 dark:text-gray-400">
           General inquiries, questions about our services, or just want to say
           hi? We&apos;d love to hear from you! Fill out the form below and
           we&apos;ll get back to you as soon as possible.
