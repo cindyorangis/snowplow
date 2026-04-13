@@ -10,12 +10,6 @@ const ROLE_REDIRECTS = {
   crew: 'https://crew.snowplow.services',
 }
 
-export const metadata = {
-  alternates: {
-    canonical: 'https://www.snowplow.services/login',
-  },
-}
-
 export default function LoginPage() {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')

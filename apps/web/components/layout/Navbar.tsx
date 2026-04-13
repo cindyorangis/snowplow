@@ -27,12 +27,16 @@ export default function Navbar() {
             <span className="sr-only">Snow Plow Services</span>
             <Image
               alt="tailwindcss logo"
-              src="https://tailwindcss.com/plus-assets/img/logos/mark.svg?color=indigo&shade=600"
+              src="https://tailwindcss.com/plus-assets/img/logos/mark.svg?color=sky&shade=600"
+              width={32}
+              height={32}
               className="h-8 w-auto dark:hidden"
             />
             <Image
               alt="tailwindcss logo"
-              src="https://tailwindcss.com/plus-assets/img/logos/mark.svg?color=indigo&shade=500"
+              src="https://tailwindcss.com/plus-assets/img/logos/mark.svg?color=sky&shade=500"
+              width={32}
+              height={32}
               className="hidden h-8 w-auto dark:block"
             />
           </Link>
@@ -85,12 +89,16 @@ export default function Navbar() {
               <span className="sr-only">Snow Plow Services</span>
               <Image
                 alt="tailwindcss logo"
-                src="https://tailwindcss.com/plus-assets/img/logos/mark.svg?color=indigo&shade=600"
+                src="https://tailwindcss.com/plus-assets/img/logos/mark.svg?color=sky&shade=600"
+                width={32}
+                height={32}
                 className="h-8 w-auto dark:hidden"
               />
               <Image
                 alt="tailwindcss logo"
-                src="https://tailwindcss.com/plus-assets/img/logos/mark.svg?color=indigo&shade=500"
+                src="https://tailwindcss.com/plus-assets/img/logos/mark.svg?color=sky&shade=500"
+                width={32}
+                height={32}
                 className="hidden h-8 w-auto dark:block"
               />
             </a>

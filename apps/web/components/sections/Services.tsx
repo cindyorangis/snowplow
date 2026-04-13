@@ -49,6 +49,8 @@ export default function Services() {
               <Image
                 src={feature.src}
                 alt={feature.alt}
+                width={650}
+                height={488}
                 className="h-full w-full object-cover transition-transform duration-300 hover:scale-105"
               />
             </div>
