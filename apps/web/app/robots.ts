@@ -6,6 +6,6 @@ export default function robots(): MetadataRoute.Robots {
       userAgent: '*',
       allow: '/',
     },
-    sitemap: 'https://snowplow.services/sitemap.xml',
+    sitemap: 'https://www.snowplow.services/sitemap.xml',
   }
 }

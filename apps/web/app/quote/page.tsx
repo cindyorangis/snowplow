@@ -13,6 +13,12 @@ const propertyTypes = [
   },
 ]
 
+export const metadata = {
+  alternates: {
+    canonical: 'https://www.snowplow.services/quote',
+  },
+}
+
 export default function QuotePage() {
   return (
     <div className="flex min-h-full flex-col justify-center px-6 py-12 lg:px-8">

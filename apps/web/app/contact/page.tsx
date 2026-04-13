@@ -4,6 +4,12 @@ import { useState } from 'react'
 import { ChevronDownIcon } from '@heroicons/react/16/solid'
 import Alert from '@/components/ui/Alert'
 
+export const metadata = {
+  alternates: {
+    canonical: 'https://www.snowplow.services/contact',
+  },
+}
+
 export default function ContactPage() {
   const [formData, setFormData] = useState({
     name: '',
