@@ -1,3 +1,8 @@
+'use client'
+
+import { useState } from 'react'
+import { getSupabaseClient } from '@snowplow/lib/supabase'
+
 import { CheckCircleIcon } from '@heroicons/react/16/solid'
 
 const propertyTypes = [
@@ -13,16 +18,60 @@ const propertyTypes = [
   },
 ]
 
-export const metadata = {
-  alternates: {
-    canonical: 'https://www.snowplow.services/quote',
-  },
-}
-
 export default function QuotePage() {
+  const [submitted, setSubmitted] = useState(false)
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+
+  async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
+    e.preventDefault()
+    setLoading(true)
+    setError(null)
+
+    const form = e.currentTarget
+    const data = new FormData(form)
+
+    const supabase = getSupabaseClient()
+    const { error: sbError } = await supabase.from('quote_requests').insert({
+      first_name: data.get('first-name') as string,
+      last_name: data.get('last-name') as string,
+      email: data.get('email') as string,
+      address: data.get('street-address') as string,
+      city: data.get('city') as string,
+      province: data.get('region') as string,
+      postal_code: data.get('postal-code') as string,
+      property_type: data.get('property-type') as string,
+      message: data.get('about') as string,
+    })
+
+    setLoading(false)
+
+    if (sbError) {
+      setError('Something went wrong. Please try again.')
+      console.error(sbError)
+      return
+    }
+
+    setSubmitted(true)
+  }
+
+  if (submitted) {
+    return (
+      <div className="flex min-h-full flex-col items-center justify-center px-6 py-12 lg:px-8">
+        <CheckCircleIcon className="size-12 text-indigo-600 dark:text-indigo-500" />
+        <h2 className="mt-4 text-xl font-semibold text-gray-900 dark:text-white">
+          Quote request received!
+        </h2>
+        <p className="mt-2 text-sm text-gray-600 dark:text-gray-400">
+          We&apos;ll review your info and get back to you shortly.
+        </p>
+      </div>
+    )
+  }
+
   return (
     <div className="flex min-h-full flex-col justify-center px-6 py-12 lg:px-8">
-      <form>
+      <form onSubmit={handleSubmit}>
         <div className="space-y-12">
           <div className="border-b border-gray-900/10 pb-12 dark:border-white/10">
             <h2 className="text-base/7 font-semibold text-gray-900 dark:text-white">
@@ -235,6 +284,26 @@ export default function QuotePage() {
             className="rounded-md bg-indigo-600 px-3 py-2 text-sm font-semibold text-white shadow-xs hover:bg-indigo-500 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600 dark:bg-indigo-500 dark:shadow-none dark:focus-visible:outline-indigo-500"
           >
             Send
+          </button>
+        </div>
+
+        {error && (
+          <p className="mt-4 text-sm text-red-600 dark:text-red-400">{error}</p>
+        )}
+
+        <div className="mt-6 flex items-center justify-end gap-x-6">
+          <button
+            type="button"
+            className="text-sm/6 font-semibold text-gray-900 dark:text-white"
+          >
+            Cancel
+          </button>
+          <button
+            type="submit"
+            disabled={loading}
+            className="rounded-md bg-indigo-600 px-3 py-2 text-sm font-semibold text-white shadow-xs hover:bg-indigo-500 disabled:opacity-60 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600 dark:bg-indigo-500 dark:shadow-none dark:focus-visible:outline-indigo-500"
+          >
+            {loading ? 'Sending...' : 'Send'}
           </button>
         </div>
       </form>
