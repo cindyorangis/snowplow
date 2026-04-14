@@ -63,7 +63,7 @@ export default function QuotePage() {
           Quote request received!
         </h2>
         <p className="mt-2 text-sm text-gray-600 dark:text-gray-400">
-          We'll review your info and get back to you shortly.
+          We&apos;ll review your info and get back to you shortly.
         </p>
       </div>
     )
