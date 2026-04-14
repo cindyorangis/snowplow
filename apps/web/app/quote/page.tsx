@@ -73,10 +73,10 @@ export default function QuotePage() {
       <div className="flex min-h-full flex-col items-center justify-center px-6 py-24 lg:px-8">
         <CheckCircleIcon className="size-12 text-indigo-600 dark:text-indigo-500" />
         <h2 className="mt-4 text-2xl font-semibold text-gray-900 dark:text-white">
-          You're all set!
+          You&apos;re all set!
         </h2>
         <p className="mt-2 text-sm text-gray-600 dark:text-gray-400">
-          We'll review your request and get back to you shortly.
+          We&apos;ll review your request and get back to you shortly.
         </p>
 
         <div className="mt-8 w-full max-w-sm rounded-lg border border-gray-200 bg-gray-50 p-6 dark:border-white/10 dark:bg-white/5">
