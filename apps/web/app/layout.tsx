@@ -28,8 +28,9 @@ export const metadata: Metadata = {
       'Professional residential & commercial snow removal in Toronto & the GTA. Seasonal contracts, salting, and de-icing. Get your free quote today.',
     siteName: 'Snow Plow Services',
   },
+  metadataBase: new URL('https://www.snowplow.services'),
   alternates: {
-    canonical: 'https://www.snowplow.services',
+    canonical: '/',
   },
   robots: {
     index: true,
