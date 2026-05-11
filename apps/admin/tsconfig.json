@@ -18,6 +18,7 @@
   "compilerOptions": {
     "paths": {
       "@snowplow/lib/*": ["../../packages/lib/src/*"]
-    }
+    },
+    "types": ["node"]
   }
 }
