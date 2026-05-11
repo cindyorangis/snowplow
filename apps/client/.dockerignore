@@ -1,0 +1,16 @@
+node_modules
+.git
+.gitignore
+.env*
+.pnp*
+pnpm-debug.log
+*test*
+*.test.*
+*.spec.*
+dist
+build
+.next
+output
+coverage
+.dockerignore
+Dockerfile

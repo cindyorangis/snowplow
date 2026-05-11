@@ -1,6 +1,7 @@
 version: '3.8'
 
 services:
+  # Marketing Site (Next.js)
   web:
     build:
       context: . # monorepo root (so all workspace files are available)
@@ -12,3 +13,48 @@ services:
     env_file:
       - apps/web/.env.production
     restart: unless-stopped
+
+  # Admin App (Nuxt/Vue)
+  admin:
+    build:
+      context: ./apps/admin
+      dockerfile: Dockerfile
+    ports:
+      - '3001:3001'
+    environment:
+      - NODE_ENV=production
+      - PORT=3001
+    volumes:
+      - ./apps/admin:/app
+    profiles:
+      - admin
+
+        # Client App (Next.js)
+  client:
+    build:
+      context: ./apps/client
+      dockerfile: Dockerfile
+    ports:
+      - '3002:3002'
+    environment:
+      - NODE_ENV=production
+      - PORT=3002
+    volumes:
+      - ./apps/client:/app
+    profiles:
+      - client
+
+        # Crew App (Next.js)
+  crew:
+    build:
+      context: ./apps/crew
+      dockerfile: Dockerfile
+    ports:
+      - '3003:3003'
+    environment:
+      - NODE_ENV=production
+      - PORT=3003
+    volumes:
+      - ./apps/crew:/app
+    profiles:
+      - crew
