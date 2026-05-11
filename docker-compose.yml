@@ -13,6 +13,12 @@ services:
     env_file:
       - apps/web/.env.production
     restart: unless-stopped
+    healthcheck:
+      test: ['CMD', 'curl', '-f', 'http://localhost:3000/']
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
 
   # Admin App (Nuxt/Vue)
   admin:
@@ -28,8 +34,14 @@ services:
       - ./apps/admin:/app
     profiles:
       - admin
+    healthcheck:
+      test: ['CMD', 'curl', '-f', 'http://localhost:3001/']
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
 
-        # Client App (Next.js)
+  # Client App (Next.js)
   client:
     build:
       context: ./apps/client
@@ -43,8 +55,14 @@ services:
       - ./apps/client:/app
     profiles:
       - client
+    healthcheck:
+      test: ['CMD', 'curl', '-f', 'http://localhost:3002/']
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
 
-        # Crew App (Next.js)
+  # Crew App (Next.js)
   crew:
     build:
       context: ./apps/crew
@@ -58,3 +76,9 @@ services:
       - ./apps/crew:/app
     profiles:
       - crew
+    healthcheck:
+      test: ['CMD', 'curl', '-f', 'http://localhost:3003/']
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
