@@ -23,10 +23,34 @@ begin
 end;
 $$ language plpgsql;
 
+create or replace function public.validate_job_status_transition()
+returns trigger as $$
+begin
+  if new.status is not distinct from old.status then
+    return new;
+  end if;
+
+  if old.status = 'assigned' and new.status in ('started', 'cancelled') then
+    return new;
+  end if;
+
+  if old.status = 'started' and new.status in ('completed', 'cancelled') then
+    return new;
+  end if;
+
+  raise exception 'Invalid job status transition: % -> %', old.status, new.status;
+end;
+$$ language plpgsql;
+
 drop trigger if exists jobs_set_updated_at on public.jobs;
 create trigger jobs_set_updated_at
   before update on public.jobs
   for each row execute procedure public.set_job_updated_at();
+
+drop trigger if exists jobs_status_transition_guard on public.jobs;
+create trigger jobs_status_transition_guard
+  before update of status on public.jobs
+  for each row execute procedure public.validate_job_status_transition();
 
 insert into public.jobs (
   quote_request_id,
@@ -150,6 +174,40 @@ create index if not exists crew_job_actions_job_id_idx
 
 create index if not exists crew_job_actions_created_at_idx
   on public.crew_job_actions (created_at desc);
+
+create or replace function public.validate_crew_job_action_matches_status()
+returns trigger as $$
+declare
+  current_status text;
+begin
+  if new.job_id is null then
+    return new;
+  end if;
+
+  select status into current_status
+  from public.jobs
+  where id = new.job_id;
+
+  if current_status is null then
+    raise exception 'Invalid crew job action: job % not found', new.job_id;
+  end if;
+
+  if new.action = 'started' and current_status <> 'started' then
+    raise exception 'Job % must be in started state before logging started action', new.job_id;
+  end if;
+
+  if new.action = 'completed' and current_status <> 'completed' then
+    raise exception 'Job % must be in completed state before logging completed action', new.job_id;
+  end if;
+
+  return new;
+end;
+$$ language plpgsql;
+
+drop trigger if exists crew_job_actions_status_guard on public.crew_job_actions;
+create trigger crew_job_actions_status_guard
+  before insert on public.crew_job_actions
+  for each row execute procedure public.validate_crew_job_action_matches_status();
 
 alter table public.jobs enable row level security;
 alter table public.job_assignments enable row level security;
