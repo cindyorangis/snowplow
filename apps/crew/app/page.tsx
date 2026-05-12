@@ -6,24 +6,33 @@ import { createClient, type SupabaseClient } from '@supabase/supabase-js'
 type AppState = 'loading' | 'ready' | 'unauthorized' | 'error'
 type JobAction = 'started' | 'completed'
 type FieldMode = 'compact' | 'full'
+type JobStatus = 'assigned' | 'started' | 'completed' | 'cancelled'
 
 type Coordinate = {
   lat: number
   lng: number
 }
 
-type DispatchItem = {
-  id: string
-  created_at: string
-  property_type: string | null
+type DispatchJob = {
+  assignmentId: string
+  jobId: string
+  quoteRequestId: string | null
+  createdAt: string
+  propertyType: string | null
   address: string | null
   city: string | null
   province: string | null
+  priority: number
+  status: JobStatus
+  routeOrder: number | null
+  assignedAt: string
+  shiftDate: string | null
 }
 
 type CrewJobAction = {
   id: string
-  quote_request_id: string
+  job_id: string | null
+  quote_request_id: string | null
   action: JobAction
   note: string | null
   created_at: string
@@ -32,7 +41,7 @@ type CrewJobAction = {
 
 type DashboardData = {
   fullName: string | null
-  queue: DispatchItem[]
+  queue: DispatchJob[]
   actions: CrewJobAction[]
 }
 
@@ -44,6 +53,9 @@ const DISPATCH_PHONE =
 const OPS_EMAIL =
   process.env.NEXT_PUBLIC_OPERATIONS_EMAIL ?? 'ops@snowplow.services'
 const ACTIONS_TABLE = 'crew_job_actions'
+const ASSIGNMENTS_TABLE = 'job_assignments'
+const JOBS_TABLE = 'jobs'
+const DISPATCH_SETUP_PATH = 'apps/crew/CREW_DISPATCH_SETUP.sql'
 
 const DEFAULT_DEPOT: Coordinate = {
   lat: Number(process.env.NEXT_PUBLIC_DEPOT_LAT ?? 43.6532),
@@ -82,35 +94,6 @@ function formatDate(isoDate: string): string {
   }).format(date)
 }
 
-function fallbackQueue(): DispatchItem[] {
-  return [
-    {
-      id: 'DEMO-001',
-      created_at: new Date().toISOString(),
-      property_type: 'residential',
-      address: '142 Elm St',
-      city: 'Toronto',
-      province: 'ON',
-    },
-    {
-      id: 'DEMO-002',
-      created_at: new Date(Date.now() - 1000 * 60 * 45).toISOString(),
-      property_type: 'commercial',
-      address: '89 Maple Ave',
-      city: 'Mississauga',
-      province: 'ON',
-    },
-  ]
-}
-
-function statusFromAction(
-  action: JobAction | null
-): 'Pending' | 'In progress' | 'Completed' {
-  if (!action) return 'Pending'
-  if (action === 'completed') return 'Completed'
-  return 'In progress'
-}
-
 function toRadians(value: number): number {
   return (value * Math.PI) / 180
 }
@@ -132,6 +115,50 @@ function distanceKm(from: Coordinate, to: Coordinate): number {
 function cityCoordinate(city: string | null): Coordinate | null {
   if (!city) return null
   return CITY_COORDS[city.toLowerCase()] ?? null
+}
+
+function statusLabel(
+  status: JobStatus
+): 'Pending' | 'In progress' | 'Completed' | 'Cancelled' {
+  if (status === 'started') return 'In progress'
+  if (status === 'completed') return 'Completed'
+  if (status === 'cancelled') return 'Cancelled'
+  return 'Pending'
+}
+
+function fallbackQueue(): DispatchJob[] {
+  return [
+    {
+      assignmentId: 'demo-assignment-1',
+      jobId: 'demo-job-1',
+      quoteRequestId: null,
+      createdAt: new Date().toISOString(),
+      propertyType: 'residential',
+      address: '142 Elm St',
+      city: 'Toronto',
+      province: 'ON',
+      priority: 2,
+      status: 'assigned',
+      routeOrder: 1,
+      assignedAt: new Date().toISOString(),
+      shiftDate: null,
+    },
+    {
+      assignmentId: 'demo-assignment-2',
+      jobId: 'demo-job-2',
+      quoteRequestId: null,
+      createdAt: new Date(Date.now() - 1000 * 60 * 45).toISOString(),
+      propertyType: 'commercial',
+      address: '89 Maple Ave',
+      city: 'Mississauga',
+      province: 'ON',
+      priority: 1,
+      status: 'assigned',
+      routeOrder: 2,
+      assignedAt: new Date(Date.now() - 1000 * 60 * 30).toISOString(),
+      shiftDate: null,
+    },
+  ]
 }
 
 export default function CrewDashboardPage() {
@@ -238,36 +265,82 @@ export default function CrewDashboardPage() {
         return
       }
 
-      let queue: DispatchItem[] = []
+      let queue: DispatchJob[] = []
       let actions: CrewJobAction[] = []
 
-      const queueResult = await supabase
-        .from('quote_requests')
-        .select('id, created_at, property_type, address, city, province')
-        .order('created_at', { ascending: false })
-        .limit(20)
+      const assignmentsResult = await supabase
+        .from(ASSIGNMENTS_TABLE)
+        .select(
+          `
+            id,
+            job_id,
+            route_order,
+            shift_date,
+            assigned_at,
+            jobs (
+              id,
+              quote_request_id,
+              created_at,
+              property_type,
+              address,
+              city,
+              province,
+              status,
+              priority
+            )
+          `
+        )
+        .eq('crew_user_id', session.user.id)
+        .eq('active', true)
+        .order('route_order', { ascending: true, nullsFirst: false })
+        .order('assigned_at', { ascending: true })
 
-      if (queueResult.error) {
+      if (assignmentsResult.error) {
         setWarningMessage(
-          'Live dispatch data is unavailable, showing fallback queue.'
+          `Assigned jobs are unavailable. Run ${DISPATCH_SETUP_PATH} in Supabase and assign jobs to this crew member.`
         )
         queue = fallbackQueue()
       } else {
-        queue = (queueResult.data as DispatchItem[]) ?? []
+        const normalized = (assignmentsResult.data ?? [])
+          .map((row) => {
+            const relatedJob = Array.isArray(row.jobs) ? row.jobs[0] : row.jobs
+            if (!relatedJob) return null
+
+            return {
+              assignmentId: row.id,
+              jobId: relatedJob.id,
+              quoteRequestId: relatedJob.quote_request_id,
+              createdAt: relatedJob.created_at,
+              propertyType: relatedJob.property_type,
+              address: relatedJob.address,
+              city: relatedJob.city,
+              province: relatedJob.province,
+              priority: Number(relatedJob.priority ?? 2),
+              status: (relatedJob.status ?? 'assigned') as JobStatus,
+              routeOrder: row.route_order,
+              assignedAt: row.assigned_at,
+              shiftDate: row.shift_date,
+            } satisfies DispatchJob
+          })
+          .filter((item): item is DispatchJob => item !== null)
+
+        queue = normalized
       }
 
       if (queue.length > 0) {
-        const queueIds = queue.map((job) => job.id)
+        const jobIds = queue.map((job) => job.jobId)
         const actionsResult = await supabase
           .from(ACTIONS_TABLE)
-          .select('id, quote_request_id, action, note, created_at, created_by')
-          .in('quote_request_id', queueIds)
+          .select(
+            'id, job_id, quote_request_id, action, note, created_at, created_by'
+          )
+          .in('job_id', jobIds)
           .order('created_at', { ascending: false })
-          .limit(200)
+          .limit(300)
 
         if (actionsResult.error) {
           setWarningMessage(
-            'Dispatch queue loaded, but action history is unavailable. Run apps/crew/CREW_JOB_ACTIONS_SETUP.sql in Supabase.'
+            `Assigned jobs loaded, but action history is unavailable. Run ${DISPATCH_SETUP_PATH} in Supabase.`
           )
         } else {
           actions = (actionsResult.data as CrewJobAction[]) ?? []
@@ -293,9 +366,10 @@ export default function CrewDashboardPage() {
   const actionsByJob = useMemo(() => {
     const map = new Map<string, CrewJobAction[]>()
     for (const action of data.actions) {
-      const existing = map.get(action.quote_request_id) ?? []
+      if (!action.job_id) continue
+      const existing = map.get(action.job_id) ?? []
       existing.push(action)
-      map.set(action.quote_request_id, existing)
+      map.set(action.job_id, existing)
     }
     return map
   }, [data.actions])
@@ -304,20 +378,21 @@ export default function CrewDashboardPage() {
 
   const routeOrderedQueue = useMemo(() => {
     const withMetadata = data.queue.map((item) => {
-      const itemActions = actionsByJob.get(item.id) ?? []
-      const latestAction = itemActions[0]?.action ?? null
-      const status = statusFromAction(latestAction)
+      const itemActions = actionsByJob.get(item.jobId) ?? []
       const target = cityCoordinate(item.city)
       const distance = target ? distanceKm(routeAnchor, target) : 999
+      const priorityScore = item.priority * 0.35
       const statusScore =
-        status === 'In progress' ? 0 : status === 'Pending' ? 1 : 3
-      const commercialBoost = item.property_type === 'commercial' ? -0.35 : 0
-      const ageScore = new Date(item.created_at).getTime() / 10000000000000
-      const score = statusScore + distance * 0.06 + commercialBoost + ageScore
+        item.status === 'started' ? 0 : item.status === 'assigned' ? 1 : 3
+      const distanceScore = distance * 0.06
+      const routeOrderScore =
+        typeof item.routeOrder === 'number' ? item.routeOrder * 0.0001 : 0
+      const score =
+        routeOrderScore + statusScore + priorityScore + distanceScore
+
       return {
         item,
         itemActions,
-        status,
         distance,
         score,
       }
@@ -328,11 +403,11 @@ export default function CrewDashboardPage() {
 
   const commercialCount = useMemo(
     () =>
-      data.queue.filter((item) => item.property_type === 'commercial').length,
+      data.queue.filter((item) => item.propertyType === 'commercial').length,
     [data.queue]
   )
 
-  async function handleJobAction(quoteRequestId: string, action: JobAction) {
+  async function handleJobAction(job: DispatchJob, action: JobAction) {
     setActionMessage(null)
 
     const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
@@ -344,42 +419,68 @@ export default function CrewDashboardPage() {
       return
     }
 
-    const note = noteByJobId[quoteRequestId]?.trim() ?? ''
+    const note = noteByJobId[job.jobId]?.trim() ?? ''
+    const nextStatus: JobStatus = action === 'started' ? 'started' : 'completed'
     const supabase = getSupabaseClient(supabaseUrl, supabaseKey)
-    const actionKey = `${quoteRequestId}:${action}`
+    const actionKey = `${job.jobId}:${action}`
     setSavingActionKey(actionKey)
 
-    const { data: insertedAction, error } = await supabase
+    const { error: statusError } = await supabase
+      .from(JOBS_TABLE)
+      .update({ status: nextStatus, updated_at: new Date().toISOString() })
+      .eq('id', job.jobId)
+
+    if (statusError) {
+      setSavingActionKey(null)
+      setActionMessage(
+        `Failed to update job status. Ensure ${DISPATCH_SETUP_PATH} is applied and this crew is assigned to the job.`
+      )
+      return
+    }
+
+    const { data: insertedAction, error: actionError } = await supabase
       .from(ACTIONS_TABLE)
       .insert({
-        quote_request_id: quoteRequestId,
+        job_id: job.jobId,
+        quote_request_id: job.quoteRequestId,
         action,
         note: note.length > 0 ? note : null,
         created_by: sessionUserId,
       })
-      .select('id, quote_request_id, action, note, created_at, created_by')
+      .select(
+        'id, job_id, quote_request_id, action, note, created_at, created_by'
+      )
       .single()
 
     setSavingActionKey(null)
 
-    if (error) {
+    if (actionError) {
       setActionMessage(
-        'Failed to save action. Make sure apps/crew/CREW_JOB_ACTIONS_SETUP.sql is applied in Supabase.'
+        `Status updated, but action log failed to write. Ensure ${DISPATCH_SETUP_PATH} is applied.`
       )
+      setData((previous) => ({
+        ...previous,
+        queue: previous.queue.map((item) =>
+          item.jobId === job.jobId ? { ...item, status: nextStatus } : item
+        ),
+      }))
       return
     }
 
     setData((previous) => ({
       ...previous,
+      queue: previous.queue.map((item) =>
+        item.jobId === job.jobId ? { ...item, status: nextStatus } : item
+      ),
       actions: [insertedAction as CrewJobAction, ...previous.actions],
     }))
-    setNoteByJobId((previous) => ({ ...previous, [quoteRequestId]: '' }))
+    setNoteByJobId((previous) => ({ ...previous, [job.jobId]: '' }))
     setActionMessage(
       action === 'started'
-        ? `Job ${quoteRequestId.slice(0, 8)} started at ${formatDate(
+        ? `Job ${job.jobId.slice(0, 8)} started at ${formatDate(
             (insertedAction as CrewJobAction).created_at
           )}.`
-        : `Job ${quoteRequestId.slice(0, 8)} completed at ${formatDate(
+        : `Job ${job.jobId.slice(0, 8)} completed at ${formatDate(
             (insertedAction as CrewJobAction).created_at
           )}.`
     )
@@ -495,7 +596,7 @@ export default function CrewDashboardPage() {
       <section className="mt-4 grid grid-cols-2 gap-3 lg:grid-cols-4">
         <article className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
           <p className="text-xs font-semibold uppercase tracking-wider text-slate-500">
-            Queue
+            Assigned
           </p>
           <p className="mt-1 text-2xl font-semibold text-slate-900">
             {data.queue.length}
@@ -530,120 +631,125 @@ export default function CrewDashboardPage() {
       <section className="mt-4 grid grid-cols-1 gap-4 lg:grid-cols-5">
         <article className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm lg:col-span-3 sm:p-5">
           <h2 className="text-base font-semibold text-slate-900">
-            Route order
+            Assigned route
           </h2>
 
           {routeOrderedQueue.length === 0 ? (
             <p className="mt-4 text-sm text-slate-600">
-              Queue is clear right now. Check back when a snowfall event starts.
+              No active assignments yet. Ask dispatch to assign jobs in
+              `job_assignments`.
             </p>
           ) : (
             <ul className="mt-3 divide-y divide-slate-100">
-              {routeOrderedQueue.map(
-                ({ item, itemActions, status, distance }) => {
-                  const startActionKey = `${item.id}:started`
-                  const completeActionKey = `${item.id}:completed`
-                  const isSaving =
-                    savingActionKey === startActionKey ||
-                    savingActionKey === completeActionKey
-                  const latest = itemActions[0]
+              {routeOrderedQueue.map(({ item, itemActions, distance }) => {
+                const startActionKey = `${item.jobId}:started`
+                const completeActionKey = `${item.jobId}:completed`
+                const isSaving =
+                  savingActionKey === startActionKey ||
+                  savingActionKey === completeActionKey
+                const latest = itemActions[0]
+                const displayStatus = statusLabel(item.status)
 
-                  return (
-                    <li
-                      key={item.id}
-                      className={fieldMode === 'compact' ? 'py-3' : 'py-4'}
-                    >
-                      <div className="flex flex-wrap items-center justify-between gap-2">
-                        <p className="text-sm font-medium text-slate-900">
-                          {(item.property_type ?? 'property').toUpperCase()} -{' '}
-                          {[item.address, item.city, item.province]
-                            .filter(Boolean)
-                            .join(', ')}
-                        </p>
-                        <div className="flex items-center gap-2">
-                          <span className="rounded-full bg-slate-100 px-2 py-1 text-xs font-semibold text-slate-600">
-                            {distance >= 999
-                              ? 'Unknown km'
-                              : `${distance.toFixed(1)} km`}
-                          </span>
-                          <span
-                            className={`inline-flex rounded-full px-2.5 py-1 text-xs font-semibold ${
-                              status === 'Completed'
-                                ? 'bg-emerald-100 text-emerald-700'
-                                : status === 'In progress'
-                                  ? 'bg-sky-100 text-sky-700'
-                                  : 'bg-slate-100 text-slate-600'
-                            }`}
-                          >
-                            {status}
-                          </span>
-                        </div>
-                      </div>
-
-                      <p className="mt-1 text-xs text-slate-500">
-                        Added {formatDate(item.created_at)} - Ref{' '}
-                        {item.id.slice(0, 8)}
+                return (
+                  <li
+                    key={item.assignmentId}
+                    className={fieldMode === 'compact' ? 'py-3' : 'py-4'}
+                  >
+                    <div className="flex flex-wrap items-center justify-between gap-2">
+                      <p className="text-sm font-medium text-slate-900">
+                        {(item.propertyType ?? 'property').toUpperCase()} -{' '}
+                        {[item.address, item.city, item.province]
+                          .filter(Boolean)
+                          .join(', ')}
                       </p>
+                      <div className="flex items-center gap-2">
+                        {typeof item.routeOrder === 'number' && (
+                          <span className="rounded-full bg-indigo-100 px-2 py-1 text-xs font-semibold text-indigo-700">
+                            Stop {item.routeOrder}
+                          </span>
+                        )}
+                        <span className="rounded-full bg-slate-100 px-2 py-1 text-xs font-semibold text-slate-600">
+                          {distance >= 999
+                            ? 'Unknown km'
+                            : `${distance.toFixed(1)} km`}
+                        </span>
+                        <span
+                          className={`inline-flex rounded-full px-2.5 py-1 text-xs font-semibold ${
+                            displayStatus === 'Completed'
+                              ? 'bg-emerald-100 text-emerald-700'
+                              : displayStatus === 'In progress'
+                                ? 'bg-sky-100 text-sky-700'
+                                : displayStatus === 'Cancelled'
+                                  ? 'bg-rose-100 text-rose-700'
+                                  : 'bg-slate-100 text-slate-600'
+                          }`}
+                        >
+                          {displayStatus}
+                        </span>
+                      </div>
+                    </div>
 
-                      <div
-                        className={fieldMode === 'compact' ? 'mt-2' : 'mt-3'}
+                    <p className="mt-1 text-xs text-slate-500">
+                      Job {item.jobId.slice(0, 8)} - Assigned{' '}
+                      {formatDate(item.assignedAt)}
+                    </p>
+
+                    <div className={fieldMode === 'compact' ? 'mt-2' : 'mt-3'}>
+                      <textarea
+                        rows={fieldMode === 'compact' ? 1 : 2}
+                        value={noteByJobId[item.jobId] ?? ''}
+                        onChange={(event) =>
+                          setNoteByJobId((previous) => ({
+                            ...previous,
+                            [item.jobId]: event.target.value,
+                          }))
+                        }
+                        placeholder="Add field note..."
+                        className="block w-full rounded-md border border-slate-300 px-3 py-2 text-sm text-slate-900 focus:border-slate-500 focus:outline-none"
+                      />
+                    </div>
+
+                    <div className="mt-2 flex flex-wrap gap-2">
+                      <button
+                        type="button"
+                        disabled={
+                          isSaving ||
+                          item.status === 'started' ||
+                          item.status === 'completed'
+                        }
+                        onClick={() => handleJobAction(item, 'started')}
+                        className="rounded-md bg-sky-700 px-3 py-2 text-xs font-semibold text-white hover:bg-sky-600 disabled:cursor-not-allowed disabled:opacity-50"
                       >
-                        <textarea
-                          rows={fieldMode === 'compact' ? 1 : 2}
-                          value={noteByJobId[item.id] ?? ''}
-                          onChange={(event) =>
-                            setNoteByJobId((previous) => ({
-                              ...previous,
-                              [item.id]: event.target.value,
-                            }))
-                          }
-                          placeholder="Add field note..."
-                          className="block w-full rounded-md border border-slate-300 px-3 py-2 text-sm text-slate-900 focus:border-slate-500 focus:outline-none"
-                        />
-                      </div>
+                        {savingActionKey === startActionKey
+                          ? 'Starting...'
+                          : 'Start'}
+                      </button>
+                      <button
+                        type="button"
+                        disabled={isSaving || item.status !== 'started'}
+                        onClick={() => handleJobAction(item, 'completed')}
+                        className="rounded-md bg-emerald-700 px-3 py-2 text-xs font-semibold text-white hover:bg-emerald-600 disabled:cursor-not-allowed disabled:opacity-50"
+                      >
+                        {savingActionKey === completeActionKey
+                          ? 'Completing...'
+                          : 'Complete'}
+                      </button>
+                    </div>
 
-                      <div className="mt-2 flex flex-wrap gap-2">
-                        <button
-                          type="button"
-                          disabled={
-                            isSaving ||
-                            status === 'In progress' ||
-                            status === 'Completed'
-                          }
-                          onClick={() => handleJobAction(item.id, 'started')}
-                          className="rounded-md bg-sky-700 px-3 py-2 text-xs font-semibold text-white hover:bg-sky-600 disabled:cursor-not-allowed disabled:opacity-50"
-                        >
-                          {savingActionKey === startActionKey
-                            ? 'Starting...'
-                            : 'Start'}
-                        </button>
-                        <button
-                          type="button"
-                          disabled={isSaving || status !== 'In progress'}
-                          onClick={() => handleJobAction(item.id, 'completed')}
-                          className="rounded-md bg-emerald-700 px-3 py-2 text-xs font-semibold text-white hover:bg-emerald-600 disabled:cursor-not-allowed disabled:opacity-50"
-                        >
-                          {savingActionKey === completeActionKey
-                            ? 'Completing...'
-                            : 'Complete'}
-                        </button>
+                    {latest && fieldMode === 'full' && (
+                      <div className="mt-2 rounded-md bg-slate-50 px-3 py-2 text-xs text-slate-600">
+                        <p className="font-semibold text-slate-700">
+                          {latest.action === 'started'
+                            ? 'Started'
+                            : 'Completed'}{' '}
+                          at {formatDate(latest.created_at)}
+                        </p>
+                        {latest.note && <p className="mt-1">{latest.note}</p>}
                       </div>
-
-                      {latest && fieldMode === 'full' && (
-                        <div className="mt-2 rounded-md bg-slate-50 px-3 py-2 text-xs text-slate-600">
-                          <p className="font-semibold text-slate-700">
-                            {latest.action === 'started'
-                              ? 'Started'
-                              : 'Completed'}{' '}
-                            at {formatDate(latest.created_at)}
-                          </p>
-                          {latest.note && <p className="mt-1">{latest.note}</p>}
-                        </div>
-                      )}
-                    </li>
-                  )
-                }
-              )}
+                    )}
+                  </li>
+                )
+              })}
             </ul>
           )}
         </article>
@@ -660,14 +766,14 @@ export default function CrewDashboardPage() {
               </p>
             ) : (
               <ul className="mt-4 space-y-3">
-                {data.actions.slice(0, 8).map((action) => (
+                {data.actions.slice(0, 10).map((action) => (
                   <li
                     key={action.id}
                     className="rounded-md bg-slate-50 p-3 text-sm"
                   >
                     <p className="font-semibold text-slate-800">
                       {action.action === 'started' ? 'Started' : 'Completed'}{' '}
-                      job {action.quote_request_id.slice(0, 8)}
+                      job {(action.job_id ?? 'unknown').slice(0, 8)}
                     </p>
                     <p className="mt-1 text-xs text-slate-500">
                       {formatDate(action.created_at)}
