@@ -5,6 +5,12 @@ import { createClient, type SupabaseClient } from '@supabase/supabase-js'
 
 type AppState = 'loading' | 'ready' | 'unauthorized' | 'error'
 type JobAction = 'started' | 'completed'
+type FieldMode = 'compact' | 'full'
+
+type Coordinate = {
+  lat: number
+  lng: number
+}
 
 type DispatchItem = {
   id: string
@@ -38,6 +44,24 @@ const DISPATCH_PHONE =
 const OPS_EMAIL =
   process.env.NEXT_PUBLIC_OPERATIONS_EMAIL ?? 'ops@snowplow.services'
 const ACTIONS_TABLE = 'crew_job_actions'
+
+const DEFAULT_DEPOT: Coordinate = {
+  lat: Number(process.env.NEXT_PUBLIC_DEPOT_LAT ?? 43.6532),
+  lng: Number(process.env.NEXT_PUBLIC_DEPOT_LNG ?? -79.3832),
+}
+
+const CITY_COORDS: Record<string, Coordinate> = {
+  toronto: { lat: 43.6532, lng: -79.3832 },
+  'north york': { lat: 43.7615, lng: -79.4111 },
+  scarborough: { lat: 43.7731, lng: -79.2578 },
+  etobicoke: { lat: 43.6205, lng: -79.5132 },
+  'east york': { lat: 43.6896, lng: -79.3274 },
+  york: { lat: 43.6899, lng: -79.4532 },
+  mississauga: { lat: 43.589, lng: -79.6441 },
+  brampton: { lat: 43.7315, lng: -79.7624 },
+  vaughan: { lat: 43.8369, lng: -79.4983 },
+  markham: { lat: 43.8561, lng: -79.337 },
+}
 
 let supabaseClient: SupabaseClient | null = null
 
@@ -87,6 +111,29 @@ function statusFromAction(
   return 'In progress'
 }
 
+function toRadians(value: number): number {
+  return (value * Math.PI) / 180
+}
+
+function distanceKm(from: Coordinate, to: Coordinate): number {
+  const earthRadius = 6371
+  const dLat = toRadians(to.lat - from.lat)
+  const dLng = toRadians(to.lng - from.lng)
+  const lat1 = toRadians(from.lat)
+  const lat2 = toRadians(to.lat)
+
+  const a =
+    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+    Math.sin(dLng / 2) * Math.sin(dLng / 2) * Math.cos(lat1) * Math.cos(lat2)
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a))
+  return earthRadius * c
+}
+
+function cityCoordinate(city: string | null): Coordinate | null {
+  if (!city) return null
+  return CITY_COORDS[city.toLowerCase()] ?? null
+}
+
 export default function CrewDashboardPage() {
   const [appState, setAppState] = useState<AppState>('loading')
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
@@ -96,11 +143,39 @@ export default function CrewDashboardPage() {
   const [sessionUserId, setSessionUserId] = useState<string | null>(null)
   const [savingActionKey, setSavingActionKey] = useState<string | null>(null)
   const [noteByJobId, setNoteByJobId] = useState<Record<string, string>>({})
+  const [fieldMode, setFieldMode] = useState<FieldMode>(() =>
+    typeof window !== 'undefined' && window.innerWidth < 768
+      ? 'compact'
+      : 'full'
+  )
+  const [crewLocation, setCrewLocation] = useState<Coordinate | null>(
+    DEFAULT_DEPOT
+  )
+  const [locationSource, setLocationSource] = useState<'gps' | 'depot'>('depot')
   const [data, setData] = useState<DashboardData>({
     fullName: null,
     queue: [],
     actions: [],
   })
+
+  useEffect(() => {
+    if (!navigator.geolocation) return
+
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        setCrewLocation({
+          lat: position.coords.latitude,
+          lng: position.coords.longitude,
+        })
+        setLocationSource('gps')
+      },
+      () => {
+        setCrewLocation(DEFAULT_DEPOT)
+        setLocationSource('depot')
+      },
+      { maximumAge: 300000, timeout: 6000, enableHighAccuracy: false }
+    )
+  }, [])
 
   useEffect(() => {
     async function bootstrap() {
@@ -170,7 +245,7 @@ export default function CrewDashboardPage() {
         .from('quote_requests')
         .select('id, created_at, property_type, address, city, province')
         .order('created_at', { ascending: false })
-        .limit(8)
+        .limit(20)
 
       if (queueResult.error) {
         setWarningMessage(
@@ -188,7 +263,7 @@ export default function CrewDashboardPage() {
           .select('id, quote_request_id, action, note, created_at, created_by')
           .in('quote_request_id', queueIds)
           .order('created_at', { ascending: false })
-          .limit(100)
+          .limit(200)
 
         if (actionsResult.error) {
           setWarningMessage(
@@ -224,6 +299,32 @@ export default function CrewDashboardPage() {
     }
     return map
   }, [data.actions])
+
+  const routeAnchor = crewLocation ?? DEFAULT_DEPOT
+
+  const routeOrderedQueue = useMemo(() => {
+    const withMetadata = data.queue.map((item) => {
+      const itemActions = actionsByJob.get(item.id) ?? []
+      const latestAction = itemActions[0]?.action ?? null
+      const status = statusFromAction(latestAction)
+      const target = cityCoordinate(item.city)
+      const distance = target ? distanceKm(routeAnchor, target) : 999
+      const statusScore =
+        status === 'In progress' ? 0 : status === 'Pending' ? 1 : 3
+      const commercialBoost = item.property_type === 'commercial' ? -0.35 : 0
+      const ageScore = new Date(item.created_at).getTime() / 10000000000000
+      const score = statusScore + distance * 0.06 + commercialBoost + ageScore
+      return {
+        item,
+        itemActions,
+        status,
+        distance,
+        score,
+      }
+    })
+
+    return withMetadata.sort((a, b) => a.score - b.score)
+  }, [actionsByJob, data.queue, routeAnchor])
 
   const commercialCount = useMemo(
     () =>
@@ -337,236 +438,249 @@ export default function CrewDashboardPage() {
   }
 
   return (
-    <main className="mx-auto min-h-screen max-w-7xl px-6 py-8 sm:py-10">
-      <header className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+    <main className="mx-auto min-h-screen max-w-7xl px-4 py-6 sm:px-6 sm:py-8">
+      <header className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-6">
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div>
             <p className="text-xs font-semibold uppercase tracking-[0.2em] text-cyan-700">
               Snow Plow Crew Console
             </p>
-            <h1 className="mt-2 text-3xl font-semibold text-slate-900">
+            <h1 className="mt-2 text-2xl font-semibold text-slate-900 sm:text-3xl">
               Good shift, {firstName}
             </h1>
             <p className="mt-2 text-sm text-slate-600">
-              Start and complete jobs with notes so dispatch has a live audit
-              trail.
+              Location-aware route ordering is active (
+              {locationSource.toUpperCase()} anchor).
             </p>
           </div>
-          <button
-            type="button"
-            onClick={() => setIsOnShift((previous) => !previous)}
-            className={`rounded-md px-4 py-2 text-sm font-semibold text-white ${
-              isOnShift
-                ? 'bg-emerald-600 hover:bg-emerald-500'
-                : 'bg-slate-700 hover:bg-slate-600'
-            }`}
-          >
-            {isOnShift ? 'On Shift' : 'Off Shift'}
-          </button>
+          <div className="flex flex-wrap gap-2">
+            <button
+              type="button"
+              onClick={() =>
+                setFieldMode((mode) =>
+                  mode === 'compact' ? 'full' : 'compact'
+                )
+              }
+              className="rounded-md border border-slate-300 bg-white px-3 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50"
+            >
+              {fieldMode === 'compact' ? 'Full mode' : 'Compact mode'}
+            </button>
+            <button
+              type="button"
+              onClick={() => setIsOnShift((previous) => !previous)}
+              className={`rounded-md px-4 py-2 text-sm font-semibold text-white ${
+                isOnShift
+                  ? 'bg-emerald-600 hover:bg-emerald-500'
+                  : 'bg-slate-700 hover:bg-slate-600'
+              }`}
+            >
+              {isOnShift ? 'On Shift' : 'Off Shift'}
+            </button>
+          </div>
         </div>
       </header>
 
       {warningMessage && (
-        <section className="mt-6 rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800">
+        <section className="mt-4 rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800">
           {warningMessage}
         </section>
       )}
 
       {actionMessage && (
-        <section className="mt-6 rounded-xl border border-emerald-200 bg-emerald-50 p-4 text-sm text-emerald-800">
+        <section className="mt-4 rounded-xl border border-emerald-200 bg-emerald-50 p-4 text-sm text-emerald-800">
           {actionMessage}
         </section>
       )}
 
-      <section className="mt-6 grid grid-cols-1 gap-4 lg:grid-cols-4">
-        <article className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
+      <section className="mt-4 grid grid-cols-2 gap-3 lg:grid-cols-4">
+        <article className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
           <p className="text-xs font-semibold uppercase tracking-wider text-slate-500">
-            Queue size
+            Queue
           </p>
-          <p className="mt-2 text-3xl font-semibold text-slate-900">
+          <p className="mt-1 text-2xl font-semibold text-slate-900">
             {data.queue.length}
           </p>
         </article>
-        <article className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
+        <article className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
           <p className="text-xs font-semibold uppercase tracking-wider text-slate-500">
-            Commercial stops
+            Commercial
           </p>
-          <p className="mt-2 text-3xl font-semibold text-slate-900">
+          <p className="mt-1 text-2xl font-semibold text-slate-900">
             {commercialCount}
           </p>
         </article>
-        <article className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
+        <article className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
           <p className="text-xs font-semibold uppercase tracking-wider text-slate-500">
-            Dispatch line
+            Dispatch
           </p>
-          <p className="mt-2 text-xl font-semibold text-slate-900">
+          <p className="mt-1 text-sm font-semibold text-slate-900">
             {DISPATCH_PHONE}
           </p>
         </article>
-        <article className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
+        <article className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
           <p className="text-xs font-semibold uppercase tracking-wider text-slate-500">
-            Shift status
+            Shift
           </p>
-          <p className="mt-2 text-xl font-semibold text-slate-900">
+          <p className="mt-1 text-sm font-semibold text-slate-900">
             {isOnShift ? 'Active' : 'Standby'}
           </p>
         </article>
       </section>
 
-      <section className="mt-6 grid grid-cols-1 gap-4 lg:grid-cols-5">
-        <article className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm lg:col-span-3">
+      <section className="mt-4 grid grid-cols-1 gap-4 lg:grid-cols-5">
+        <article className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm lg:col-span-3 sm:p-5">
           <h2 className="text-base font-semibold text-slate-900">
-            Dispatch queue
+            Route order
           </h2>
 
-          {data.queue.length === 0 ? (
+          {routeOrderedQueue.length === 0 ? (
             <p className="mt-4 text-sm text-slate-600">
               Queue is clear right now. Check back when a snowfall event starts.
             </p>
           ) : (
-            <ul className="mt-4 divide-y divide-slate-100">
-              {data.queue.map((item) => {
-                const itemActions = actionsByJob.get(item.id) ?? []
-                const latestAction = itemActions[0]?.action ?? null
-                const status = statusFromAction(latestAction)
-                const startActionKey = `${item.id}:started`
-                const completeActionKey = `${item.id}:completed`
-                const isSaving =
-                  savingActionKey === startActionKey ||
-                  savingActionKey === completeActionKey
+            <ul className="mt-3 divide-y divide-slate-100">
+              {routeOrderedQueue.map(
+                ({ item, itemActions, status, distance }) => {
+                  const startActionKey = `${item.id}:started`
+                  const completeActionKey = `${item.id}:completed`
+                  const isSaving =
+                    savingActionKey === startActionKey ||
+                    savingActionKey === completeActionKey
+                  const latest = itemActions[0]
 
-                return (
-                  <li key={item.id} className="py-4">
-                    <div className="flex flex-wrap items-center justify-between gap-2">
-                      <p className="text-sm font-medium text-slate-900">
-                        {(item.property_type ?? 'property').toUpperCase()} -{' '}
-                        {[item.address, item.city, item.province]
-                          .filter(Boolean)
-                          .join(', ')}
-                      </p>
-                      <span
-                        className={`inline-flex rounded-full px-2.5 py-1 text-xs font-semibold ${
-                          status === 'Completed'
-                            ? 'bg-emerald-100 text-emerald-700'
-                            : status === 'In progress'
-                              ? 'bg-sky-100 text-sky-700'
-                              : 'bg-slate-100 text-slate-600'
-                        }`}
-                      >
-                        {status}
-                      </span>
-                    </div>
-
-                    <p className="mt-1 text-xs text-slate-500">
-                      Added {formatDate(item.created_at)} - Ref{' '}
-                      {item.id.slice(0, 8)}
-                    </p>
-
-                    <div className="mt-3">
-                      <label
-                        htmlFor={`note-${item.id}`}
-                        className="text-xs font-medium uppercase tracking-wider text-slate-500"
-                      >
-                        Note
-                      </label>
-                      <textarea
-                        id={`note-${item.id}`}
-                        rows={2}
-                        value={noteByJobId[item.id] ?? ''}
-                        onChange={(event) =>
-                          setNoteByJobId((previous) => ({
-                            ...previous,
-                            [item.id]: event.target.value,
-                          }))
-                        }
-                        placeholder="Arrival details, blockers, completion notes..."
-                        className="mt-1 block w-full rounded-md border border-slate-300 px-3 py-2 text-sm text-slate-900 focus:border-slate-500 focus:outline-none"
-                      />
-                    </div>
-
-                    <div className="mt-3 flex flex-wrap gap-2">
-                      <button
-                        type="button"
-                        disabled={
-                          isSaving ||
-                          status === 'In progress' ||
-                          status === 'Completed'
-                        }
-                        onClick={() => handleJobAction(item.id, 'started')}
-                        className="rounded-md bg-sky-700 px-3 py-2 text-xs font-semibold text-white hover:bg-sky-600 disabled:cursor-not-allowed disabled:opacity-50"
-                      >
-                        {savingActionKey === startActionKey
-                          ? 'Starting...'
-                          : 'Start job'}
-                      </button>
-                      <button
-                        type="button"
-                        disabled={isSaving || status !== 'In progress'}
-                        onClick={() => handleJobAction(item.id, 'completed')}
-                        className="rounded-md bg-emerald-700 px-3 py-2 text-xs font-semibold text-white hover:bg-emerald-600 disabled:cursor-not-allowed disabled:opacity-50"
-                      >
-                        {savingActionKey === completeActionKey
-                          ? 'Completing...'
-                          : 'Complete job'}
-                      </button>
-                    </div>
-
-                    {itemActions.length > 0 && (
-                      <div className="mt-3 rounded-md bg-slate-50 px-3 py-2 text-xs text-slate-600">
-                        <p className="font-semibold text-slate-700">
-                          Latest activity
+                  return (
+                    <li
+                      key={item.id}
+                      className={fieldMode === 'compact' ? 'py-3' : 'py-4'}
+                    >
+                      <div className="flex flex-wrap items-center justify-between gap-2">
+                        <p className="text-sm font-medium text-slate-900">
+                          {(item.property_type ?? 'property').toUpperCase()} -{' '}
+                          {[item.address, item.city, item.province]
+                            .filter(Boolean)
+                            .join(', ')}
                         </p>
-                        <p className="mt-1">
-                          {itemActions[0].action === 'started'
-                            ? 'Started'
-                            : 'Completed'}{' '}
-                          at {formatDate(itemActions[0].created_at)}
-                        </p>
-                        {itemActions[0].note && (
-                          <p className="mt-1 text-slate-500">
-                            {itemActions[0].note}
-                          </p>
-                        )}
+                        <div className="flex items-center gap-2">
+                          <span className="rounded-full bg-slate-100 px-2 py-1 text-xs font-semibold text-slate-600">
+                            {distance >= 999
+                              ? 'Unknown km'
+                              : `${distance.toFixed(1)} km`}
+                          </span>
+                          <span
+                            className={`inline-flex rounded-full px-2.5 py-1 text-xs font-semibold ${
+                              status === 'Completed'
+                                ? 'bg-emerald-100 text-emerald-700'
+                                : status === 'In progress'
+                                  ? 'bg-sky-100 text-sky-700'
+                                  : 'bg-slate-100 text-slate-600'
+                            }`}
+                          >
+                            {status}
+                          </span>
+                        </div>
                       </div>
+
+                      <p className="mt-1 text-xs text-slate-500">
+                        Added {formatDate(item.created_at)} - Ref{' '}
+                        {item.id.slice(0, 8)}
+                      </p>
+
+                      <div
+                        className={fieldMode === 'compact' ? 'mt-2' : 'mt-3'}
+                      >
+                        <textarea
+                          rows={fieldMode === 'compact' ? 1 : 2}
+                          value={noteByJobId[item.id] ?? ''}
+                          onChange={(event) =>
+                            setNoteByJobId((previous) => ({
+                              ...previous,
+                              [item.id]: event.target.value,
+                            }))
+                          }
+                          placeholder="Add field note..."
+                          className="block w-full rounded-md border border-slate-300 px-3 py-2 text-sm text-slate-900 focus:border-slate-500 focus:outline-none"
+                        />
+                      </div>
+
+                      <div className="mt-2 flex flex-wrap gap-2">
+                        <button
+                          type="button"
+                          disabled={
+                            isSaving ||
+                            status === 'In progress' ||
+                            status === 'Completed'
+                          }
+                          onClick={() => handleJobAction(item.id, 'started')}
+                          className="rounded-md bg-sky-700 px-3 py-2 text-xs font-semibold text-white hover:bg-sky-600 disabled:cursor-not-allowed disabled:opacity-50"
+                        >
+                          {savingActionKey === startActionKey
+                            ? 'Starting...'
+                            : 'Start'}
+                        </button>
+                        <button
+                          type="button"
+                          disabled={isSaving || status !== 'In progress'}
+                          onClick={() => handleJobAction(item.id, 'completed')}
+                          className="rounded-md bg-emerald-700 px-3 py-2 text-xs font-semibold text-white hover:bg-emerald-600 disabled:cursor-not-allowed disabled:opacity-50"
+                        >
+                          {savingActionKey === completeActionKey
+                            ? 'Completing...'
+                            : 'Complete'}
+                        </button>
+                      </div>
+
+                      {latest && fieldMode === 'full' && (
+                        <div className="mt-2 rounded-md bg-slate-50 px-3 py-2 text-xs text-slate-600">
+                          <p className="font-semibold text-slate-700">
+                            {latest.action === 'started'
+                              ? 'Started'
+                              : 'Completed'}{' '}
+                            at {formatDate(latest.created_at)}
+                          </p>
+                          {latest.note && <p className="mt-1">{latest.note}</p>}
+                        </div>
+                      )}
+                    </li>
+                  )
+                }
+              )}
+            </ul>
+          )}
+        </article>
+
+        {fieldMode === 'full' && (
+          <article className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm lg:col-span-2">
+            <h2 className="text-base font-semibold text-slate-900">
+              Action timeline
+            </h2>
+            {data.actions.length === 0 ? (
+              <p className="mt-4 text-sm text-slate-600">
+                No job actions logged yet. Start a job to begin tracking
+                timestamps.
+              </p>
+            ) : (
+              <ul className="mt-4 space-y-3">
+                {data.actions.slice(0, 8).map((action) => (
+                  <li
+                    key={action.id}
+                    className="rounded-md bg-slate-50 p-3 text-sm"
+                  >
+                    <p className="font-semibold text-slate-800">
+                      {action.action === 'started' ? 'Started' : 'Completed'}{' '}
+                      job {action.quote_request_id.slice(0, 8)}
+                    </p>
+                    <p className="mt-1 text-xs text-slate-500">
+                      {formatDate(action.created_at)}
+                    </p>
+                    {action.note && (
+                      <p className="mt-2 text-slate-600">{action.note}</p>
                     )}
                   </li>
-                )
-              })}
-            </ul>
-          )}
-        </article>
-
-        <article className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm lg:col-span-2">
-          <h2 className="text-base font-semibold text-slate-900">
-            Action timeline
-          </h2>
-          {data.actions.length === 0 ? (
-            <p className="mt-4 text-sm text-slate-600">
-              No job actions logged yet. Start a job to begin tracking
-              timestamps.
-            </p>
-          ) : (
-            <ul className="mt-4 space-y-3">
-              {data.actions.slice(0, 8).map((action) => (
-                <li
-                  key={action.id}
-                  className="rounded-md bg-slate-50 p-3 text-sm"
-                >
-                  <p className="font-semibold text-slate-800">
-                    {action.action === 'started' ? 'Started' : 'Completed'} job{' '}
-                    {action.quote_request_id.slice(0, 8)}
-                  </p>
-                  <p className="mt-1 text-xs text-slate-500">
-                    {formatDate(action.created_at)}
-                  </p>
-                  {action.note && (
-                    <p className="mt-2 text-slate-600">{action.note}</p>
-                  )}
-                </li>
-              ))}
-            </ul>
-          )}
-        </article>
+                ))}
+              </ul>
+            )}
+          </article>
+        )}
       </section>
     </main>
   )
