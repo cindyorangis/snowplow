@@ -63,6 +63,9 @@ importers:
 
   apps/client:
     dependencies:
+      '@supabase/supabase-js':
+        specifier: ^2.101.0
+        version: 2.102.1
       next:
         specifier: 16.1.6
         version: 16.1.6(@babel/core@7.29.0)(react-dom@19.2.5(react@19.2.5))(react@19.2.5)
