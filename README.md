@@ -88,6 +88,7 @@ pnpm install
 Each app has its own `.env` file. Copy the example files and fill in your values:
 
 ```bash
+cp apps/web/.env.example apps/web/.env.local
 cp apps/admin/.env.example apps/admin/.env.local
 cp apps/client/.env.example apps/client/.env.local
 cp apps/crew/.env.example apps/crew/.env.local

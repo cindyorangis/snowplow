@@ -1,210 +1,226 @@
 'use client'
 
-export default function Register() {
-  return (
-    <div className="bg-white px-6 py-24 sm:py-32 lg:px-8 dark:bg-gray-900">
-      <div
-        aria-hidden="true"
-        className="absolute inset-x-0 -top-40 -z-10 transform-gpu overflow-hidden blur-3xl sm:-top-80"
-      >
-        <div
-          style={{
-            clipPath:
-              'polygon(74.1% 44.1%, 100% 61.6%, 97.5% 26.9%, 85.5% 0.1%, 80.7% 2%, 72.5% 32.5%, 60.2% 62.4%, 52.4% 68.1%, 47.5% 58.3%, 45.2% 34.5%, 27.5% 76.7%, 0.1% 64.9%, 17.9% 100%, 27.6% 76.8%, 76.1% 97.7%, 74.1% 44.1%)',
-          }}
-          className="relative left-1/2 -z-10 aspect-[1155/678] w-[36.125rem] max-w-none -translate-x-1/2 rotate-[30deg] bg-gradient-to-tr from-[#ff80b5] to-[#9089fc] opacity-30 sm:left-[calc(50%-40rem)] sm:w-[72.1875rem] dark:opacity-20"
-        />
-      </div>
-      <div className="mx-auto max-w-2xl text-center">
-        <h2 className="text-balance text-4xl font-semibold tracking-tight text-gray-900 sm:text-5xl dark:text-white">
-          Register
-        </h2>
-        <p className="mt-4 text-lg/8 text-gray-600 dark:text-gray-400">
-          Create an account to manage your snow removal services, view invoices,
-          and access exclusive offers. It&apos;s quick and easy to get started!
+import { useState } from 'react'
+import Link from 'next/link'
+import { getSupabaseClient } from '@snowplow/lib/supabase'
+
+type FormState = {
+  firstName: string
+  lastName: string
+  email: string
+  password: string
+  confirmPassword: string
+}
+
+const initialState: FormState = {
+  firstName: '',
+  lastName: '',
+  email: '',
+  password: '',
+  confirmPassword: '',
+}
+
+export default function RegisterPage() {
+  const [formState, setFormState] = useState<FormState>(initialState)
+  const [error, setError] = useState<string | null>(null)
+  const [loading, setLoading] = useState(false)
+  const [registeredEmail, setRegisteredEmail] = useState<string | null>(null)
+
+  function onFieldChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const { name, value } = e.target
+    setFormState((previous) => ({ ...previous, [name]: value }))
+  }
+
+  async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
+    e.preventDefault()
+    setError(null)
+
+    if (formState.password.length < 8) {
+      setError('Password must be at least 8 characters.')
+      return
+    }
+
+    if (formState.password !== formState.confirmPassword) {
+      setError('Passwords do not match.')
+      return
+    }
+
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
+    const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_DEFAULT_KEY
+
+    if (!supabaseUrl || !supabaseKey) {
+      setError('Missing Supabase configuration. Please contact support.')
+      return
+    }
+
+    setLoading(true)
+    const supabase = getSupabaseClient(supabaseUrl, supabaseKey)
+    const { error: signUpError } = await supabase.auth.signUp({
+      email: formState.email,
+      password: formState.password,
+      options: {
+        data: {
+          full_name: `${formState.firstName} ${formState.lastName}`.trim(),
+        },
+      },
+    })
+    setLoading(false)
+
+    if (signUpError) {
+      setError(signUpError.message)
+      return
+    }
+
+    setRegisteredEmail(formState.email)
+    setFormState(initialState)
+  }
+
+  if (registeredEmail) {
+    return (
+      <div className="mx-auto flex min-h-[70vh] max-w-xl flex-col items-center justify-center px-6 text-center">
+        <h1 className="text-3xl font-semibold text-gray-900 dark:text-white">
+          Account created
+        </h1>
+        <p className="mt-3 text-sm text-gray-600 dark:text-gray-400">
+          We sent a confirmation email to <strong>{registeredEmail}</strong>.
+          Confirm your account, then sign in.
         </p>
+        <Link
+          href="/login"
+          className="mt-8 rounded-md bg-indigo-600 px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-500 dark:bg-indigo-500 dark:hover:bg-indigo-400"
+        >
+          Go to login
+        </Link>
       </div>
+    )
+  }
 
-      <form className="mx-auto mt-16 max-w-xl sm:mt-20">
-        <div className="space-y-12">
-          <div className="border-b border-gray-900/10 pb-12 dark:border-white/10">
-            <div className="mt-10 grid grid-cols-1 gap-x-6 gap-y-8 sm:grid-cols-6">
-              <div className="sm:col-span-4">
-                <label
-                  htmlFor="username"
-                  className="block text-sm/6 font-medium text-gray-900 dark:text-white"
-                >
-                  Username
-                </label>
-                <div className="mt-2">
-                  <div className="flex items-center rounded-md bg-white pl-3 outline-1 -outline-offset-1 outline-gray-300 focus-within:outline-2 focus-within:-outline-offset-2 focus-within:outline-indigo-600 dark:bg-white/5 dark:outline-white/10 dark:focus-within:outline-indigo-500">
-                    <input
-                      id="username"
-                      name="username"
-                      type="text"
-                      placeholder="janesmith"
-                      className="block min-w-0 grow bg-white py-1.5 pr-3 pl-1 text-base text-gray-900 placeholder:text-gray-400 focus:outline-none sm:text-sm/6 dark:bg-transparent dark:text-white dark:placeholder:text-gray-500"
-                    />
-                  </div>
-                </div>
-              </div>
+  return (
+    <div className="bg-white px-6 py-16 dark:bg-gray-900 sm:py-20 lg:px-8">
+      <div className="mx-auto max-w-xl">
+        <h1 className="text-3xl font-semibold tracking-tight text-gray-900 dark:text-white sm:text-4xl">
+          Create your account
+        </h1>
+        <p className="mt-3 text-sm text-gray-600 dark:text-gray-400">
+          Manage your snow service schedule, visit history, and billing in one
+          place.
+        </p>
+
+        <form onSubmit={handleSubmit} className="mt-10 space-y-5">
+          <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
+            <div>
+              <label
+                htmlFor="firstName"
+                className="block text-sm font-medium text-gray-900 dark:text-white"
+              >
+                First name
+              </label>
+              <input
+                id="firstName"
+                name="firstName"
+                required
+                value={formState.firstName}
+                onChange={onFieldChange}
+                className="mt-2 block w-full rounded-md bg-white px-3 py-2 text-sm text-gray-900 outline outline-1 -outline-offset-1 outline-gray-300 focus:outline-2 focus:-outline-offset-2 focus:outline-indigo-600 dark:bg-white/5 dark:text-white dark:outline-white/10 dark:focus:outline-indigo-500"
+              />
+            </div>
+            <div>
+              <label
+                htmlFor="lastName"
+                className="block text-sm font-medium text-gray-900 dark:text-white"
+              >
+                Last name
+              </label>
+              <input
+                id="lastName"
+                name="lastName"
+                required
+                value={formState.lastName}
+                onChange={onFieldChange}
+                className="mt-2 block w-full rounded-md bg-white px-3 py-2 text-sm text-gray-900 outline outline-1 -outline-offset-1 outline-gray-300 focus:outline-2 focus:-outline-offset-2 focus:outline-indigo-600 dark:bg-white/5 dark:text-white dark:outline-white/10 dark:focus:outline-indigo-500"
+              />
             </div>
           </div>
 
-          <div className="border-b border-gray-900/10 pb-12 dark:border-white/10">
-            <h2 className="text-base/7 font-semibold text-gray-900 dark:text-white">
-              Personal Information
-            </h2>
-            <p className="mt-1 text-sm/6 text-gray-600 dark:text-gray-400">
-              Use a billing address that matches your credit card or payment
-              method.
-            </p>
+          <div>
+            <label
+              htmlFor="email"
+              className="block text-sm font-medium text-gray-900 dark:text-white"
+            >
+              Email
+            </label>
+            <input
+              id="email"
+              name="email"
+              type="email"
+              required
+              value={formState.email}
+              onChange={onFieldChange}
+              className="mt-2 block w-full rounded-md bg-white px-3 py-2 text-sm text-gray-900 outline outline-1 -outline-offset-1 outline-gray-300 focus:outline-2 focus:-outline-offset-2 focus:outline-indigo-600 dark:bg-white/5 dark:text-white dark:outline-white/10 dark:focus:outline-indigo-500"
+            />
+          </div>
 
-            <div className="mt-10 grid grid-cols-1 gap-x-6 gap-y-8 sm:grid-cols-6">
-              <div className="sm:col-span-3">
-                <label
-                  htmlFor="first-name"
-                  className="block text-sm/6 font-medium text-gray-900 dark:text-white"
-                >
-                  First name
-                </label>
-                <div className="mt-2">
-                  <input
-                    id="first-name"
-                    name="first-name"
-                    type="text"
-                    autoComplete="given-name"
-                    className="block w-full rounded-md bg-white px-3 py-1.5 text-base text-gray-900 outline-1 -outline-offset-1 outline-gray-300 placeholder:text-gray-400 focus:outline-2 focus:-outline-offset-2 focus:outline-indigo-600 sm:text-sm/6 dark:bg-white/5 dark:text-white dark:outline-white/10 dark:placeholder:text-gray-500 dark:focus:outline-indigo-500"
-                  />
-                </div>
-              </div>
-
-              <div className="sm:col-span-3">
-                <label
-                  htmlFor="last-name"
-                  className="block text-sm/6 font-medium text-gray-900 dark:text-white"
-                >
-                  Last name
-                </label>
-                <div className="mt-2">
-                  <input
-                    id="last-name"
-                    name="last-name"
-                    type="text"
-                    autoComplete="family-name"
-                    className="block w-full rounded-md bg-white px-3 py-1.5 text-base text-gray-900 outline-1 -outline-offset-1 outline-gray-300 placeholder:text-gray-400 focus:outline-2 focus:-outline-offset-2 focus:outline-indigo-600 sm:text-sm/6 dark:bg-white/5 dark:text-white dark:outline-white/10 dark:placeholder:text-gray-500 dark:focus:outline-indigo-500"
-                  />
-                </div>
-              </div>
-
-              <div className="sm:col-span-4">
-                <label
-                  htmlFor="email"
-                  className="block text-sm/6 font-medium text-gray-900 dark:text-white"
-                >
-                  Email address
-                </label>
-                <div className="mt-2">
-                  <input
-                    id="email"
-                    name="email"
-                    type="email"
-                    autoComplete="email"
-                    className="block w-full rounded-md bg-white px-3 py-1.5 text-base text-gray-900 outline-1 -outline-offset-1 outline-gray-300 placeholder:text-gray-400 focus:outline-2 focus:-outline-offset-2 focus:outline-indigo-600 sm:text-sm/6 dark:bg-white/5 dark:text-white dark:outline-white/10 dark:placeholder:text-gray-500 dark:focus:outline-indigo-500"
-                  />
-                </div>
-              </div>
-
-              <div className="col-span-full">
-                <label
-                  htmlFor="street-address"
-                  className="block text-sm/6 font-medium text-gray-900 dark:text-white"
-                >
-                  Street address
-                </label>
-                <div className="mt-2">
-                  <input
-                    id="street-address"
-                    name="street-address"
-                    type="text"
-                    autoComplete="street-address"
-                    className="block w-full rounded-md bg-white px-3 py-1.5 text-base text-gray-900 outline-1 -outline-offset-1 outline-gray-300 placeholder:text-gray-400 focus:outline-2 focus:-outline-offset-2 focus:outline-indigo-600 sm:text-sm/6 dark:bg-white/5 dark:text-white dark:outline-white/10 dark:placeholder:text-gray-500 dark:focus:outline-indigo-500"
-                  />
-                </div>
-              </div>
-
-              <div className="sm:col-span-2 sm:col-start-1">
-                <label
-                  htmlFor="city"
-                  className="block text-sm/6 font-medium text-gray-900 dark:text-white"
-                >
-                  City
-                </label>
-                <div className="mt-2">
-                  <input
-                    id="city"
-                    name="city"
-                    type="text"
-                    autoComplete="address-level2"
-                    className="block w-full rounded-md bg-white px-3 py-1.5 text-base text-gray-900 outline-1 -outline-offset-1 outline-gray-300 placeholder:text-gray-400 focus:outline-2 focus:-outline-offset-2 focus:outline-indigo-600 sm:text-sm/6 dark:bg-white/5 dark:text-white dark:outline-white/10 dark:placeholder:text-gray-500 dark:focus:outline-indigo-500"
-                  />
-                </div>
-              </div>
-
-              <div className="sm:col-span-2">
-                <label
-                  htmlFor="region"
-                  className="block text-sm/6 font-medium text-gray-900 dark:text-white"
-                >
-                  State / Province
-                </label>
-                <div className="mt-2">
-                  <input
-                    id="region"
-                    name="region"
-                    type="text"
-                    autoComplete="address-level1"
-                    className="block w-full rounded-md bg-white px-3 py-1.5 text-base text-gray-900 outline-1 -outline-offset-1 outline-gray-300 placeholder:text-gray-400 focus:outline-2 focus:-outline-offset-2 focus:outline-indigo-600 sm:text-sm/6 dark:bg-white/5 dark:text-white dark:outline-white/10 dark:placeholder:text-gray-500 dark:focus:outline-indigo-500"
-                  />
-                </div>
-              </div>
-
-              <div className="sm:col-span-2">
-                <label
-                  htmlFor="postal-code"
-                  className="block text-sm/6 font-medium text-gray-900 dark:text-white"
-                >
-                  ZIP / Postal code
-                </label>
-                <div className="mt-2">
-                  <input
-                    id="postal-code"
-                    name="postal-code"
-                    type="text"
-                    autoComplete="postal-code"
-                    className="block w-full rounded-md bg-white px-3 py-1.5 text-base text-gray-900 outline-1 -outline-offset-1 outline-gray-300 placeholder:text-gray-400 focus:outline-2 focus:-outline-offset-2 focus:outline-indigo-600 sm:text-sm/6 dark:bg-white/5 dark:text-white dark:outline-white/10 dark:placeholder:text-gray-500 dark:focus:outline-indigo-500"
-                  />
-                </div>
-              </div>
+          <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
+            <div>
+              <label
+                htmlFor="password"
+                className="block text-sm font-medium text-gray-900 dark:text-white"
+              >
+                Password
+              </label>
+              <input
+                id="password"
+                name="password"
+                type="password"
+                required
+                minLength={8}
+                value={formState.password}
+                onChange={onFieldChange}
+                className="mt-2 block w-full rounded-md bg-white px-3 py-2 text-sm text-gray-900 outline outline-1 -outline-offset-1 outline-gray-300 focus:outline-2 focus:-outline-offset-2 focus:outline-indigo-600 dark:bg-white/5 dark:text-white dark:outline-white/10 dark:focus:outline-indigo-500"
+              />
+            </div>
+            <div>
+              <label
+                htmlFor="confirmPassword"
+                className="block text-sm font-medium text-gray-900 dark:text-white"
+              >
+                Confirm password
+              </label>
+              <input
+                id="confirmPassword"
+                name="confirmPassword"
+                type="password"
+                required
+                value={formState.confirmPassword}
+                onChange={onFieldChange}
+                className="mt-2 block w-full rounded-md bg-white px-3 py-2 text-sm text-gray-900 outline outline-1 -outline-offset-1 outline-gray-300 focus:outline-2 focus:-outline-offset-2 focus:outline-indigo-600 dark:bg-white/5 dark:text-white dark:outline-white/10 dark:focus:outline-indigo-500"
+              />
             </div>
           </div>
-        </div>
 
-        <div className="mt-6 flex items-center justify-end gap-x-6">
-          <button
-            type="button"
-            className="text-sm/6 font-semibold text-gray-900 dark:text-white"
-          >
-            Cancel
-          </button>
+          {error && (
+            <p className="text-sm text-red-600 dark:text-red-400">{error}</p>
+          )}
+
           <button
             type="submit"
-            className="rounded-md bg-indigo-600 px-3 py-2 text-sm font-semibold text-white shadow-xs hover:bg-indigo-500 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600 dark:bg-indigo-500 dark:shadow-none dark:focus-visible:outline-indigo-500"
+            disabled={loading}
+            className="w-full rounded-md bg-indigo-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-indigo-500 disabled:cursor-not-allowed disabled:opacity-60 dark:bg-indigo-500 dark:hover:bg-indigo-400"
           >
-            Save
+            {loading ? 'Creating account...' : 'Create account'}
           </button>
-        </div>
-      </form>
+        </form>
+
+        <p className="mt-6 text-sm text-gray-600 dark:text-gray-400">
+          Already have an account?{' '}
+          <Link
+            href="/login"
+            className="font-semibold text-indigo-600 hover:text-indigo-500 dark:text-indigo-400"
+          >
+            Sign in
+          </Link>
+        </p>
+      </div>
     </div>
   )
 }

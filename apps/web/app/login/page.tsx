@@ -2,12 +2,19 @@
 
 import { useState } from 'react'
 import Image from 'next/image'
-import { getSupabaseClient, getUserRole } from '@snowplow/lib/supabase'
+import {
+  getSupabaseClient,
+  getUserRole,
+  type Role,
+} from '@snowplow/lib/supabase'
 
-const ROLE_REDIRECTS = {
-  admin: 'https://admin.snowplow.services',
-  client: 'https://app.snowplow.services',
-  crew: 'https://crew.snowplow.services',
+const ROLE_REDIRECTS: Record<Role, string> = {
+  admin:
+    process.env.NEXT_PUBLIC_ADMIN_APP_URL ?? 'https://admin.snowplow.services',
+  client:
+    process.env.NEXT_PUBLIC_CLIENT_APP_URL ?? 'https://app.snowplow.services',
+  crew:
+    process.env.NEXT_PUBLIC_CREW_APP_URL ?? 'https://crew.snowplow.services',
 }
 
 export default function LoginPage() {
@@ -21,10 +28,16 @@ export default function LoginPage() {
     setError(null)
     setLoading(true)
 
-    const supabase = getSupabaseClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL,
-      process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_DEFAULT_KEY
-    )
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
+    const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_DEFAULT_KEY
+
+    if (!supabaseUrl || !supabaseKey) {
+      setError('Missing Supabase configuration. Please contact support.')
+      setLoading(false)
+      return
+    }
+
+    const supabase = getSupabaseClient(supabaseUrl, supabaseKey)
 
     const { error: authError } = await supabase.auth.signInWithPassword({
       email,
@@ -37,12 +50,9 @@ export default function LoginPage() {
       return
     }
 
-    const role = await getUserRole(
-      process.env.NEXT_PUBLIC_SUPABASE_URL,
-      process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_DEFAULT_KEY
-    )
+    const role = await getUserRole(supabaseUrl, supabaseKey)
 
-    if (!role || !ROLE_REDIRECTS[role]) {
+    if (!role) {
       setError('Account not configured. Contact support.')
       setLoading(false)
       return
@@ -53,9 +63,15 @@ export default function LoginPage() {
       data: { session },
     } = await supabase.auth.getSession()
 
-    const url = new URL(`${ROLE_REDIRECTS[role]}`)
-    url.searchParams.set('access_token', session!.access_token)
-    url.searchParams.set('refresh_token', session!.refresh_token)
+    if (!session?.access_token || !session?.refresh_token) {
+      setError('Unable to create a session. Please try again.')
+      setLoading(false)
+      return
+    }
+
+    const url = new URL(ROLE_REDIRECTS[role])
+    url.searchParams.set('access_token', session.access_token)
+    url.searchParams.set('refresh_token', session.refresh_token)
 
     window.location.href = url.toString()
   }
