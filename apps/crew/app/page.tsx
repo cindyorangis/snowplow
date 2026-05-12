@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { createClient, type SupabaseClient } from '@supabase/supabase-js'
 
 type AppState = 'loading' | 'ready' | 'unauthorized' | 'error'
@@ -37,6 +37,17 @@ type CrewJobAction = {
   note: string | null
   created_at: string
   created_by: string | null
+  sync_state?: 'pending' | 'synced'
+}
+
+type QueuedJobAction = {
+  id: string
+  jobId: string
+  quoteRequestId: string | null
+  action: JobAction
+  note: string | null
+  createdAt: string
+  createdBy: string
 }
 
 type DashboardData = {
@@ -56,6 +67,7 @@ const ACTIONS_TABLE = 'crew_job_actions'
 const ASSIGNMENTS_TABLE = 'job_assignments'
 const JOBS_TABLE = 'jobs'
 const DISPATCH_SETUP_PATH = 'apps/crew/CREW_DISPATCH_SETUP.sql'
+const OFFLINE_ACTION_QUEUE_STORAGE_KEY = 'snowplow:crew:offline-actions:v1'
 
 const DEFAULT_DEPOT: Coordinate = {
   lat: Number(process.env.NEXT_PUBLIC_DEPOT_LAT ?? 43.6532),
@@ -161,6 +173,122 @@ function fallbackQueue(): DispatchJob[] {
   ]
 }
 
+function clientUuid(): string {
+  if (
+    typeof crypto !== 'undefined' &&
+    typeof crypto.randomUUID === 'function'
+  ) {
+    return crypto.randomUUID()
+  }
+
+  const randomHex = (size: number) =>
+    Array.from({ length: size }, () =>
+      Math.floor(Math.random() * 16).toString(16)
+    ).join('')
+
+  return `${randomHex(8)}-${randomHex(4)}-4${randomHex(3)}-a${randomHex(3)}-${randomHex(12)}`
+}
+
+function normalizeQueuedActions(value: unknown): QueuedJobAction[] {
+  if (!Array.isArray(value)) return []
+
+  return value
+    .map((item) => {
+      if (!item || typeof item !== 'object') return null
+      const candidate = item as Partial<QueuedJobAction>
+      if (
+        typeof candidate.id !== 'string' ||
+        typeof candidate.jobId !== 'string' ||
+        (candidate.quoteRequestId !== null &&
+          typeof candidate.quoteRequestId !== 'string' &&
+          typeof candidate.quoteRequestId !== 'undefined') ||
+        (candidate.action !== 'started' && candidate.action !== 'completed') ||
+        (candidate.note !== null &&
+          typeof candidate.note !== 'string' &&
+          typeof candidate.note !== 'undefined') ||
+        typeof candidate.createdAt !== 'string' ||
+        typeof candidate.createdBy !== 'string'
+      ) {
+        return null
+      }
+
+      return {
+        id: candidate.id,
+        jobId: candidate.jobId,
+        quoteRequestId: candidate.quoteRequestId ?? null,
+        action: candidate.action,
+        note: candidate.note ?? null,
+        createdAt: candidate.createdAt,
+        createdBy: candidate.createdBy,
+      } satisfies QueuedJobAction
+    })
+    .filter((item): item is QueuedJobAction => item !== null)
+}
+
+function readQueuedActionsFromStorage(): QueuedJobAction[] {
+  if (typeof window === 'undefined') return []
+
+  try {
+    const raw = window.localStorage.getItem(OFFLINE_ACTION_QUEUE_STORAGE_KEY)
+    if (!raw) return []
+    return normalizeQueuedActions(JSON.parse(raw))
+  } catch {
+    return []
+  }
+}
+
+function nextStatusForAction(action: JobAction): JobStatus {
+  return action === 'started' ? 'started' : 'completed'
+}
+
+function applyPendingStatuses(
+  queue: DispatchJob[],
+  pendingActions: QueuedJobAction[]
+): DispatchJob[] {
+  if (pendingActions.length === 0) return queue
+
+  const sorted = [...pendingActions].sort(
+    (a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
+  )
+  const pendingStatusByJob = new Map<string, JobStatus>()
+
+  for (const pending of sorted) {
+    pendingStatusByJob.set(pending.jobId, nextStatusForAction(pending.action))
+  }
+
+  return queue.map((job) => {
+    const pendingStatus = pendingStatusByJob.get(job.jobId)
+    if (!pendingStatus) return job
+    return { ...job, status: pendingStatus }
+  })
+}
+
+function mergeActions(
+  syncedActions: CrewJobAction[],
+  pendingActions: QueuedJobAction[]
+): CrewJobAction[] {
+  const pendingActionIds = new Set(pendingActions.map((item) => item.id))
+  const pendingAsTimeline = pendingActions.map((item) => ({
+    id: item.id,
+    job_id: item.jobId,
+    quote_request_id: item.quoteRequestId,
+    action: item.action,
+    note: item.note,
+    created_at: item.createdAt,
+    created_by: item.createdBy,
+    sync_state: 'pending',
+  })) satisfies CrewJobAction[]
+
+  const syncedWithoutPendingDuplicates = syncedActions.filter(
+    (item) => !pendingActionIds.has(item.id)
+  )
+
+  return [...pendingAsTimeline, ...syncedWithoutPendingDuplicates].sort(
+    (a, b) =>
+      new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+  )
+}
+
 export default function CrewDashboardPage() {
   const [appState, setAppState] = useState<AppState>('loading')
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
@@ -169,6 +297,13 @@ export default function CrewDashboardPage() {
   const [isOnShift, setIsOnShift] = useState(true)
   const [sessionUserId, setSessionUserId] = useState<string | null>(null)
   const [savingActionKey, setSavingActionKey] = useState<string | null>(null)
+  const [isOnline, setIsOnline] = useState(() =>
+    typeof navigator === 'undefined' ? true : navigator.onLine
+  )
+  const [isSyncingQueue, setIsSyncingQueue] = useState(false)
+  const [pendingActions, setPendingActions] = useState<QueuedJobAction[]>(() =>
+    readQueuedActionsFromStorage()
+  )
   const [noteByJobId, setNoteByJobId] = useState<Record<string, string>>({})
   const [fieldMode, setFieldMode] = useState<FieldMode>(() =>
     typeof window !== 'undefined' && window.innerWidth < 768
@@ -184,6 +319,47 @@ export default function CrewDashboardPage() {
     queue: [],
     actions: [],
   })
+  const pendingActionsRef = useRef<QueuedJobAction[]>(pendingActions)
+  const isSyncingQueueRef = useRef(false)
+
+  useEffect(() => {
+    pendingActionsRef.current = pendingActions
+    if (typeof window === 'undefined') return
+
+    window.localStorage.setItem(
+      OFFLINE_ACTION_QUEUE_STORAGE_KEY,
+      JSON.stringify(pendingActions)
+    )
+  }, [pendingActions])
+
+  useEffect(() => {
+    if (!sessionUserId) return
+    setPendingActions((previous) =>
+      previous.filter((item) => item.createdBy === sessionUserId)
+    )
+  }, [sessionUserId])
+
+  useEffect(() => {
+    function handleOnline() {
+      setIsOnline(true)
+      setActionMessage('Back online. Syncing queued actions...')
+    }
+
+    function handleOffline() {
+      setIsOnline(false)
+      setWarningMessage(
+        'Offline mode active. Job actions are being queued locally on this device.'
+      )
+    }
+
+    window.addEventListener('online', handleOnline)
+    window.addEventListener('offline', handleOffline)
+
+    return () => {
+      window.removeEventListener('online', handleOnline)
+      window.removeEventListener('offline', handleOffline)
+    }
+  }, [])
 
   useEffect(() => {
     if (!navigator.geolocation) return
@@ -358,6 +534,21 @@ export default function CrewDashboardPage() {
     bootstrap()
   }, [])
 
+  const userPendingActions = useMemo(() => {
+    if (!sessionUserId) return []
+    return pendingActions.filter((item) => item.createdBy === sessionUserId)
+  }, [pendingActions, sessionUserId])
+
+  const queueWithPendingStatuses = useMemo(
+    () => applyPendingStatuses(data.queue, userPendingActions),
+    [data.queue, userPendingActions]
+  )
+
+  const displayActions = useMemo(
+    () => mergeActions(data.actions, userPendingActions),
+    [data.actions, userPendingActions]
+  )
+
   const firstName = useMemo(() => {
     if (!data.fullName) return 'Crew'
     return data.fullName.split(' ')[0] || 'Crew'
@@ -365,19 +556,131 @@ export default function CrewDashboardPage() {
 
   const actionsByJob = useMemo(() => {
     const map = new Map<string, CrewJobAction[]>()
-    for (const action of data.actions) {
+    for (const action of displayActions) {
       if (!action.job_id) continue
       const existing = map.get(action.job_id) ?? []
       existing.push(action)
       map.set(action.job_id, existing)
     }
     return map
-  }, [data.actions])
+  }, [displayActions])
 
   const routeAnchor = crewLocation ?? DEFAULT_DEPOT
 
+  const syncQueuedActions = useCallback(async () => {
+    if (isSyncingQueueRef.current) return
+    if (!isOnline || !sessionUserId) return
+
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
+    const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_DEFAULT_KEY
+    if (!supabaseUrl || !supabaseKey) return
+
+    const queuedSnapshot = [...pendingActionsRef.current].sort(
+      (a, b) =>
+        new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
+    )
+    if (queuedSnapshot.length === 0) return
+
+    isSyncingQueueRef.current = true
+    setIsSyncingQueue(true)
+
+    const supabase = getSupabaseClient(supabaseUrl, supabaseKey)
+    const remaining: QueuedJobAction[] = []
+    const syncedRows: CrewJobAction[] = []
+    let syncedCount = 0
+
+    try {
+      for (const queued of queuedSnapshot) {
+        const nextStatus = nextStatusForAction(queued.action)
+
+        const { error: statusError } = await supabase
+          .from(JOBS_TABLE)
+          .update({ status: nextStatus, updated_at: queued.createdAt })
+          .eq('id', queued.jobId)
+
+        if (statusError) {
+          remaining.push(queued)
+          continue
+        }
+
+        const { data: insertedAction, error: actionError } = await supabase
+          .from(ACTIONS_TABLE)
+          .insert({
+            id: queued.id,
+            job_id: queued.jobId,
+            quote_request_id: queued.quoteRequestId,
+            action: queued.action,
+            note: queued.note,
+            created_by: queued.createdBy,
+            created_at: queued.createdAt,
+          })
+          .select(
+            'id, job_id, quote_request_id, action, note, created_at, created_by'
+          )
+          .single()
+
+        if (actionError) {
+          if (actionError.code === '23505') {
+            syncedCount += 1
+            continue
+          }
+
+          remaining.push(queued)
+          continue
+        }
+
+        syncedRows.push({
+          ...(insertedAction as CrewJobAction),
+          sync_state: 'synced',
+        })
+        syncedCount += 1
+      }
+
+      setPendingActions(remaining)
+
+      if (syncedRows.length > 0) {
+        const newestFirst = [...syncedRows].sort(
+          (a, b) =>
+            new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+        )
+
+        setData((previous) => ({
+          ...previous,
+          actions: [
+            ...newestFirst,
+            ...previous.actions.filter(
+              (existing) =>
+                !newestFirst.some((synced) => synced.id === existing.id)
+            ),
+          ],
+        }))
+      }
+
+      if (syncedCount > 0) {
+        setActionMessage(
+          `Synced ${syncedCount} queued action${syncedCount === 1 ? '' : 's'}.`
+        )
+        setWarningMessage(null)
+      }
+
+      if (remaining.length > 0) {
+        setWarningMessage(
+          'Some queued actions are still pending sync. Keep the app open and online to retry.'
+        )
+      }
+    } finally {
+      isSyncingQueueRef.current = false
+      setIsSyncingQueue(false)
+    }
+  }, [isOnline, sessionUserId])
+
+  useEffect(() => {
+    if (!isOnline || !sessionUserId || userPendingActions.length === 0) return
+    void syncQueuedActions()
+  }, [isOnline, sessionUserId, syncQueuedActions, userPendingActions.length])
+
   const routeOrderedQueue = useMemo(() => {
-    const withMetadata = data.queue.map((item) => {
+    const withMetadata = queueWithPendingStatuses.map((item) => {
       const itemActions = actionsByJob.get(item.jobId) ?? []
       const target = cityCoordinate(item.city)
       const distance = target ? distanceKm(routeAnchor, target) : 999
@@ -399,12 +702,14 @@ export default function CrewDashboardPage() {
     })
 
     return withMetadata.sort((a, b) => a.score - b.score)
-  }, [actionsByJob, data.queue, routeAnchor])
+  }, [actionsByJob, queueWithPendingStatuses, routeAnchor])
 
   const commercialCount = useMemo(
     () =>
-      data.queue.filter((item) => item.propertyType === 'commercial').length,
-    [data.queue]
+      queueWithPendingStatuses.filter(
+        (item) => item.propertyType === 'commercial'
+      ).length,
+    [queueWithPendingStatuses]
   )
 
   async function handleJobAction(job: DispatchJob, action: JobAction) {
@@ -420,70 +725,45 @@ export default function CrewDashboardPage() {
     }
 
     const note = noteByJobId[job.jobId]?.trim() ?? ''
-    const nextStatus: JobStatus = action === 'started' ? 'started' : 'completed'
-    const supabase = getSupabaseClient(supabaseUrl, supabaseKey)
+    const nextStatus = nextStatusForAction(action)
     const actionKey = `${job.jobId}:${action}`
+    const createdAt = new Date().toISOString()
+    const queuedAction: QueuedJobAction = {
+      id: clientUuid(),
+      jobId: job.jobId,
+      quoteRequestId: job.quoteRequestId,
+      action,
+      note: note.length > 0 ? note : null,
+      createdAt,
+      createdBy: sessionUserId,
+    }
+
     setSavingActionKey(actionKey)
-
-    const { error: statusError } = await supabase
-      .from(JOBS_TABLE)
-      .update({ status: nextStatus, updated_at: new Date().toISOString() })
-      .eq('id', job.jobId)
-
-    if (statusError) {
-      setSavingActionKey(null)
-      setActionMessage(
-        `Failed to update job status. Ensure ${DISPATCH_SETUP_PATH} is applied and this crew is assigned to the job.`
-      )
-      return
-    }
-
-    const { data: insertedAction, error: actionError } = await supabase
-      .from(ACTIONS_TABLE)
-      .insert({
-        job_id: job.jobId,
-        quote_request_id: job.quoteRequestId,
-        action,
-        note: note.length > 0 ? note : null,
-        created_by: sessionUserId,
-      })
-      .select(
-        'id, job_id, quote_request_id, action, note, created_at, created_by'
-      )
-      .single()
-
-    setSavingActionKey(null)
-
-    if (actionError) {
-      setActionMessage(
-        `Status updated, but action log failed to write. Ensure ${DISPATCH_SETUP_PATH} is applied.`
-      )
-      setData((previous) => ({
-        ...previous,
-        queue: previous.queue.map((item) =>
-          item.jobId === job.jobId ? { ...item, status: nextStatus } : item
-        ),
-      }))
-      return
-    }
+    setPendingActions((previous) => [...previous, queuedAction])
 
     setData((previous) => ({
       ...previous,
       queue: previous.queue.map((item) =>
         item.jobId === job.jobId ? { ...item, status: nextStatus } : item
       ),
-      actions: [insertedAction as CrewJobAction, ...previous.actions],
     }))
     setNoteByJobId((previous) => ({ ...previous, [job.jobId]: '' }))
-    setActionMessage(
-      action === 'started'
-        ? `Job ${job.jobId.slice(0, 8)} started at ${formatDate(
-            (insertedAction as CrewJobAction).created_at
-          )}.`
-        : `Job ${job.jobId.slice(0, 8)} completed at ${formatDate(
-            (insertedAction as CrewJobAction).created_at
-          )}.`
-    )
+    setSavingActionKey(null)
+
+    if (!isOnline) {
+      setWarningMessage(
+        'Offline mode active. Action saved on this device and will sync automatically when back online.'
+      )
+      setActionMessage(
+        action === 'started'
+          ? `Queued start for job ${job.jobId.slice(0, 8)} at ${formatDate(createdAt)}.`
+          : `Queued completion for job ${job.jobId.slice(0, 8)} at ${formatDate(createdAt)}.`
+      )
+      return
+    }
+
+    setActionMessage('Action saved. Syncing with dispatch...')
+    void syncQueuedActions()
   }
 
   if (appState === 'loading') {
@@ -584,6 +864,16 @@ export default function CrewDashboardPage() {
       {warningMessage && (
         <section className="mt-4 rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800">
           {warningMessage}
+        </section>
+      )}
+
+      {(!isOnline || userPendingActions.length > 0 || isSyncingQueue) && (
+        <section className="mt-4 rounded-xl border border-sky-200 bg-sky-50 p-4 text-sm text-sky-800">
+          {!isOnline
+            ? `Offline mode. ${userPendingActions.length} queued action${userPendingActions.length === 1 ? '' : 's'} will sync when connection returns.`
+            : isSyncingQueue
+              ? `Syncing ${userPendingActions.length} queued action${userPendingActions.length === 1 ? '' : 's'}...`
+              : `${userPendingActions.length} queued action${userPendingActions.length === 1 ? '' : 's'} pending sync.`}
         </section>
       )}
 
@@ -743,6 +1033,9 @@ export default function CrewDashboardPage() {
                             ? 'Started'
                             : 'Completed'}{' '}
                           at {formatDate(latest.created_at)}
+                          {latest.sync_state === 'pending'
+                            ? ' (Pending sync)'
+                            : ''}
                         </p>
                         {latest.note && <p className="mt-1">{latest.note}</p>}
                       </div>
@@ -759,14 +1052,14 @@ export default function CrewDashboardPage() {
             <h2 className="text-base font-semibold text-slate-900">
               Action timeline
             </h2>
-            {data.actions.length === 0 ? (
+            {displayActions.length === 0 ? (
               <p className="mt-4 text-sm text-slate-600">
                 No job actions logged yet. Start a job to begin tracking
                 timestamps.
               </p>
             ) : (
               <ul className="mt-4 space-y-3">
-                {data.actions.slice(0, 10).map((action) => (
+                {displayActions.slice(0, 10).map((action) => (
                   <li
                     key={action.id}
                     className="rounded-md bg-slate-50 p-3 text-sm"
@@ -777,6 +1070,7 @@ export default function CrewDashboardPage() {
                     </p>
                     <p className="mt-1 text-xs text-slate-500">
                       {formatDate(action.created_at)}
+                      {action.sync_state === 'pending' ? ' - Pending sync' : ''}
                     </p>
                     {action.note && (
                       <p className="mt-2 text-slate-600">{action.note}</p>
